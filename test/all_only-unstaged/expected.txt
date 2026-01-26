@@ -10,7 +10,11 @@ Identity: `Test User <test@example.com>`
 HASH Initial commit
 ```
 
-# Files Staged for Commit
+# Staged Changes
+
+Ran `git add -A` to stage all changes.
+
+Output of `git status --porcelain`:
 ```
 M  file.txt
 ```
@@ -19,6 +23,8 @@ M  file.txt
 > To abort: `git reset HEAD && git apply --cached /tmp/commit-tool-staged-backup-PID.patch`
 
 # Diff
+
+Output of `git diff --cached`:
 ```diff
 diff --git a/file.txt b/file.txt
 index HASH..HASH 100644

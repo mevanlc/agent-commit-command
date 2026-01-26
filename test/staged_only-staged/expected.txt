@@ -10,7 +10,16 @@ Identity: `Test User <test@example.com>`
 HASH Initial commit
 ```
 
+# Staged Changes
+
+Output of `git status --porcelain | grep '^[MADRCT]'`:
+```
+A  staged.txt
+```
+
 # Diff
+
+Output of `git diff --cached`:
 ```diff
 diff --git a/staged.txt b/staged.txt
 new file mode 100644

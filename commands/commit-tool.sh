@@ -242,6 +242,19 @@ EOF
     exit 0
   fi
 
+  # Get staged status (filtered to only staged changes)
+  STAGED_STATUS=$($GIT_CMD status --porcelain | grep '^[MADRCT]' || true)
+
+  cat <<EOF
+# Staged Changes
+
+Output of \`$GIT_CMD status --porcelain | grep '^[MADRCT]'\`:
+\`\`\`
+$STAGED_STATUS
+\`\`\`
+
+EOF
+
   # Get staged diff
   STAGED_DIFF=$($GIT_CMD diff --cached)
   DIFF_LINES=$(echo "$STAGED_DIFF" | wc -l)
@@ -259,6 +272,8 @@ EOF
   else
     cat <<EOF
 # Diff
+
+Output of \`$GIT_CMD diff --cached\`:
 \`\`\`diff
 $STAGED_DIFF
 \`\`\`
@@ -340,11 +355,15 @@ EOF
   $GIT_CMD diff --cached > "$BACKUP_PATCH" 2>/dev/null || true
   $GIT_CMD add -A
 
-  # Show staged status (renames now detected)
-  STAGED_STATUS=$($GIT_CMD status --short 2>/dev/null || true)
+  # Show staged status (after staging everything)
+  STAGED_STATUS=$($GIT_CMD status --porcelain 2>/dev/null || true)
 
   cat <<EOF
-# Files Staged for Commit
+# Staged Changes
+
+Ran \`$GIT_CMD add -A\` to stage all changes.
+
+Output of \`$GIT_CMD status --porcelain\`:
 \`\`\`
 $STAGED_STATUS
 \`\`\`
@@ -370,6 +389,8 @@ EOF
   else
     cat <<EOF
 # Diff
+
+Output of \`$GIT_CMD diff --cached\`:
 \`\`\`diff
 $ALL_DIFF
 \`\`\`
@@ -439,30 +460,20 @@ EOF
     exit 0
   fi
 
+  # Get full status including untracked
+  FULL_STATUS=$($GIT_CMD status --porcelain -u 2>/dev/null || true)
+
   cat <<EOF
-# Currently Staged
-\`\`\`
-${STAGED_FILES:-"(nothing staged)"}
-\`\`\`
+# Working Tree Status
 
-# Unstaged Modifications
+Output of \`$GIT_CMD status --porcelain -u\`:
 \`\`\`
-${UNSTAGED_FILES:-"(none)"}
-\`\`\`
-
-# Untracked Files
-\`\`\`
-${UNTRACKED:-"(none)"}
-\`\`\`
-
-# Full Status
-\`\`\`
-$STATUS
+${FULL_STATUS:-"(clean)"}
 \`\`\`
 
 EOF
 
-  if [[ -z "$STATUS" ]]; then
+  if [[ -z "$FULL_STATUS" ]]; then
     cat <<'EOF'
 # No Changes - STOP
 
@@ -475,16 +486,20 @@ EOF
   cat <<EOF
 # Instructions
 
-1. **Show the user what's available to commit** (relay the staged/unstaged/untracked sections above - they can't see slash command output)
+1. **Show the user what's available to commit** - relay the status above (they can't see slash command output):
+   - First column: staged status (\`M\`=modified, \`A\`=added, \`D\`=deleted, \`R\`=renamed)
+   - Second column: unstaged status
+   - \`??\` = untracked file
 2. **Ask the user** what should be included in this commit:
    - Suggest logical groupings if changes seem separable
    - If user gave additional instructions, use those as guidance
    - Offer options like "all of it", "just the staged", or specific files
 3. Stage the selected changes (\`$GIT_CMD add <files>\`)
-4. Generate a commit message (imperative summary, optional bullets)
-5. $COMMIT_REVIEW_FORMAT
-6. If confirmed: commit using HEREDOC format
-7. Show resulting commit hash
+4. **Before generating the commit review**, run \`$GIT_CMD status --porcelain -u\` to refresh your view of what's staged
+5. Generate a commit message (imperative summary, optional bullets)
+6. $COMMIT_REVIEW_FORMAT
+7. If confirmed: commit using HEREDOC format
+8. Show resulting commit hash
 
 # Safety Checks
 

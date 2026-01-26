@@ -10,22 +10,9 @@ Identity: `Test User <test@example.com>`
 HASH Initial commit
 ```
 
-# Currently Staged
-```
-staged.txt
-```
+# Working Tree Status
 
-# Unstaged Modifications
-```
-file.txt
-```
-
-# Untracked Files
-```
-(none)
-```
-
-# Full Status
+Output of `git status --porcelain -u`:
 ```
  M file.txt
 A  staged.txt
@@ -33,14 +20,18 @@ A  staged.txt
 
 # Instructions
 
-1. **Show the user what's available to commit** (relay the staged/unstaged/untracked sections above - they can't see slash command output)
+1. **Show the user what's available to commit** - relay the status above (they can't see slash command output):
+   - First column: staged status (`M`=modified, `A`=added, `D`=deleted, `R`=renamed)
+   - Second column: unstaged status
+   - `??` = untracked file
 2. **Ask the user** what should be included in this commit:
    - Suggest logical groupings if changes seem separable
    - If user gave additional instructions, use those as guidance
    - Offer options like "all of it", "just the staged", or specific files
 3. Stage the selected changes (`git add <files>`)
-4. Generate a commit message (imperative summary, optional bullets)
-5. Present a **Commit Review** to the user in this exact format:
+4. **Before generating the commit review**, run `git status --porcelain -u` to refresh your view of what's staged
+5. Generate a commit message (imperative summary, optional bullets)
+6. Present a **Commit Review** to the user in this exact format:
 
 ```
 # Commit Review
@@ -60,8 +51,8 @@ Proceed? ([y]es / [n]o)
 ```
 
 Wait for user confirmation before committing.
-6. If confirmed: commit using HEREDOC format
-7. Show resulting commit hash
+7. If confirmed: commit using HEREDOC format
+8. Show resulting commit hash
 
 # Safety Checks
 
