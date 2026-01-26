@@ -1,0 +1,16 @@
+# Git Commit - Stage All Mode
+
+Stage all outstanding changes, then commit.
+
+Branch: `main`
+Identity: `Test User <test@example.com>`
+
+# Recent Commits
+```
+HASH Initial commit
+```
+
+# No Changes - STOP
+
+Working tree is clean. Nothing to commit. Inform the user.
+

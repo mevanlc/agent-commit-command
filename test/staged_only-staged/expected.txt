@@ -1,0 +1,55 @@
+# Git Commit - Staged Only Mode
+
+Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+
+Branch: `main`
+Identity: `Test User <test@example.com>`
+
+# Recent Commits
+```
+HASH Initial commit
+```
+
+# Diff
+```diff
+diff --git a/staged.txt b/staged.txt
+new file mode 100644
+index HASH..HASH
+--- /dev/null
++++ b/staged.txt
+@@ -0,0 +1 @@
++staged change
+```
+
+# Instructions
+
+1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
+2. Match the style of recent commits shown above
+3. Present a **Commit Review** to the user in this exact format:
+
+```
+# Commit Review
+
+## Paths
+M  path/to/modified
+A  path/to/added
+D  path/to/deleted
+R  {old/path -> new/path}
+
+## Proposed Commit Message
+<summary line>
+[- bullet if needed]
+[- bullet if needed]
+
+Proceed? ([y]es / [n]o)
+```
+
+Wait for user confirmation before committing.
+4. If confirmed: commit using HEREDOC format
+5. Show resulting commit hash
+
+# Safety Checks
+
+Stop and warn if staged files include:
+- Secrets (`.env`, credentials, API keys, certs)
+- Large binaries that look accidental

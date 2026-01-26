@@ -1,0 +1,19 @@
+# Git Commit - Staged Only Mode
+
+Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+
+Branch: `main`
+Identity: `Test User <test@example.com>`
+
+# Recent Commits
+```
+HASH Main commit
+HASH Initial commit
+```
+
+# CONFLICTS DETECTED - STOP
+```
+file.txt
+```
+Inform user and help resolve before committing.
+

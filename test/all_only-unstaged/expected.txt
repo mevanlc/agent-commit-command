@@ -1,0 +1,66 @@
+# Git Commit - Stage All Mode
+
+Stage all outstanding changes, then commit.
+
+Branch: `main`
+Identity: `Test User <test@example.com>`
+
+# Recent Commits
+```
+HASH Initial commit
+```
+
+# Files Staged for Commit
+```
+M  file.txt
+```
+
+> Staging backup saved to `/tmp/commit-tool-staged-backup-PID.patch`
+> To abort: `git reset HEAD && git apply --cached /tmp/commit-tool-staged-backup-PID.patch`
+
+# Diff
+```diff
+diff --git a/file.txt b/file.txt
+index HASH..HASH 100644
+--- a/file.txt
++++ b/file.txt
+@@ -1 +1,2 @@
+ initial
++modified
+```
+
+# Instructions
+
+Changes are already staged. Review and confirm:
+
+1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
+2. Match the style of recent commits shown above
+3. Present a **Commit Review** to the user in this exact format:
+
+```
+# Commit Review
+
+## Paths
+M  path/to/modified
+A  path/to/added
+D  path/to/deleted
+R  {old/path -> new/path}
+
+## Proposed Commit Message
+<summary line>
+[- bullet if needed]
+[- bullet if needed]
+
+Proceed? ([y]es / [n]o)
+```
+
+Wait for user confirmation before committing.
+4. If confirmed: commit using HEREDOC format, then show resulting hash
+5. If declined: run `git reset HEAD && git apply --cached /tmp/commit-tool-staged-backup-PID.patch` to restore previous staging
+
+# Safety Checks
+
+Stop and warn if changes include:
+- Secrets (`.env`, credentials, API keys, certs)
+- Large binaries that look accidental
+- Files that seem unrelated to the apparent intent

@@ -1,0 +1,19 @@
+# Git Commit - Staged Only Mode
+
+Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+
+Branch: `main`
+Identity: `Mike Clark <mevanlc@gmail.com>`
+
+# Recent Commits
+```
+HASH Initial commit: commit-tool with hook support and test infrastructure
+```
+
+# Nothing Staged - STOP
+
+There are no staged changes. Inform the user:
+- They need to stage changes first (`git add <files>`)
+- Or use `/commit --all` to stage everything
+- Or use `/commit --ask` for interactive help
+
