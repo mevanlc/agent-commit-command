@@ -1,5 +1,5 @@
 ---
-name: commit2
+name: commit
 description: Git commit helper
 argument-hint: --<staged|all|ask> [additional instructions]
 ---
