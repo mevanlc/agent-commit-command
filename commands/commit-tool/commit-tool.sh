@@ -118,10 +118,16 @@ fi
 
 run_hooks_for() {
   local stage="$1"
-  local hook_dir="${SCRIPT_DIR}/commit-tool/hook-${stage}"
+  local pattern="${SCRIPT_DIR}/hook-${stage}-*.sh"
 
-  [[ ! -d "$hook_dir" ]] && return 0
+  # Find hooks matching pattern (e.g., hook-preflight-01-id-check.sh)
+  local hooks=()
+  for f in $pattern; do
+    [[ -f "$f" ]] && hooks+=("$f")
+  done
+  [[ ${#hooks[@]} -eq 0 ]] && return 0
 
+  # Run hooks in sorted order
   while IFS= read -r -d '' hook_sh; do
     local hook_output rc=0
     hook_output=$("$hook_sh" "$GIT_CMD" "$MODE" "$EXTRA_INSTRUCTIONS") || rc=$?
@@ -134,7 +140,7 @@ run_hooks_for() {
       exit 1
     fi
     echo -n "$hook_output"
-  done < <(find "$hook_dir" -maxdepth 1 -name '*.sh' -type f -print0 | sort -z)
+  done < <(printf '%s\0' "${hooks[@]}" | sort -z)
 }
 
 # Run preflight hooks

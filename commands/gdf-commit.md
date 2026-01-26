@@ -19,4 +19,4 @@ If `gdf`:
 
 ---
 
-!`~/.claude/commands/commit-tool.sh gdf "$ARGUMENTS"`
+!`~/.claude/commands/commit-tool/commit-tool.sh gdf "$ARGUMENTS"`
