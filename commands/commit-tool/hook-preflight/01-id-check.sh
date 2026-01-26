@@ -167,8 +167,11 @@ fi
 
 # === OUTPUT ===
 
-[[ -n "$NAMED_COMMITS_SECTION" ]] && echo "$NAMED_COMMITS_SECTION"
-[[ -n "$EMAIL_COMMITS_SECTION" ]] && echo "$EMAIL_COMMITS_SECTION"
-[[ -n "$IDENTITY_WARNINGS" ]] && echo -e "$IDENTITY_WARNINGS"
+# Only show reports when there's a conflict (provides context for decision)
+if [[ -n "$IDENTITY_WARNINGS" ]]; then
+  [[ -n "$NAMED_COMMITS_SECTION" ]] && echo "$NAMED_COMMITS_SECTION"
+  [[ -n "$EMAIL_COMMITS_SECTION" ]] && echo "$EMAIL_COMMITS_SECTION"
+  echo -e "$IDENTITY_WARNINGS"
+fi
 
 exit 0
