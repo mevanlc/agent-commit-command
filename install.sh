@@ -2,6 +2,7 @@
 # install.sh - Install commit-tool to ~/.claude/commands
 #
 # Usage: install.sh [options]
+#   (Windows PowerShell version: install.ps1)
 #   --hooks       Also install hook-*.{sh,config} files
 #   --upgrade-sh  Overwrite existing .sh files (not .config)
 #   --upgrade-md  Overwrite existing .md files (not .config)

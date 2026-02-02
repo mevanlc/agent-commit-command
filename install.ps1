@@ -1,116 +1,143 @@
+#!/usr/bin/env pwsh
 # install.ps1 - Install commit-tool to ~/.claude/commands
 #
+# Supports both Windows PowerShell 5.1 and PowerShell 7+.
+#
 # Usage: install.ps1 [options]
-#   -Hooks       Also install hook-*.{sh,config} files
-#   -UpgradeSh   Overwrite existing .sh files (not .config)
-#   -UpgradeMd   Overwrite existing .md files (not .config)
+#   --hooks       Also install hook-*.{sh,config} files
+#   --upgrade-sh  Overwrite existing .sh files (not .config)
+#   --upgrade-md  Overwrite existing .md files (not .config)
 #
 # Options can be combined.
 
+[CmdletBinding(PositionalBinding = $false)]
 param(
-    [switch]$Hooks,
-    [switch]$UpgradeSh,
-    [switch]$UpgradeMd,
-    [switch]$Help
+  [switch]$Hooks,
+  [Alias('upgrade-sh')]
+  [switch]$UpgradeSh,
+  [Alias('upgrade-md')]
+  [switch]$UpgradeMd,
+  [Alias('h')]
+  [switch]$Help,
+  [Parameter(ValueFromRemainingArguments = $true)]
+  [string[]]$RemainingArgs = @()
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-if ($Help) {
-    Write-Host "Usage: install.ps1 [-Hooks] [-UpgradeSh] [-UpgradeMd]"
-    Write-Host ""
-    Write-Host "Options:"
-    Write-Host "  -Hooks       Also install hook-*.{sh,config} files"
-    Write-Host "  -UpgradeSh   Overwrite existing .sh files (not .config)"
-    Write-Host "  -UpgradeMd   Overwrite existing .md files (not .config)"
-    exit 0
+function Write-Usage {
+  Write-Host 'Usage: install.ps1 [--hooks] [--upgrade-sh] [--upgrade-md]'
+  Write-Host ''
+  Write-Host 'Options:'
+  Write-Host '  --hooks       Also install hook-*.{sh,config} files'
+  Write-Host '  --upgrade-sh  Overwrite existing .sh files (not .config)'
+  Write-Host '  --upgrade-md  Overwrite existing .md files (not .config)'
 }
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+if ($Help) {
+  Write-Usage
+  exit 0
+}
+
+if ($RemainingArgs.Count -gt 0) {
+  [Console]::Error.WriteLine("Unknown option: $($RemainingArgs[0])")
+  exit 1
+}
+
+$ScriptDir =
+  if ($PSScriptRoot) { $PSScriptRoot }
+  else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+
 $SrcCommands = Join-Path $ScriptDir 'commands'
-$DestBase = Join-Path $HOME '.claude' 'commands'
+if (-not (Test-Path -LiteralPath $SrcCommands)) {
+  throw "Missing expected directory: $SrcCommands"
+}
+
+$HomeDir =
+  if ($HOME) { $HOME }
+  elseif ($env:USERPROFILE) { $env:USERPROFILE }
+  else { [Environment]::GetFolderPath('UserProfile') }
+
+# Join-Path with 3+ segments relies on -AdditionalChildPath (not in Windows PowerShell 5.1).
+$DestBase = Join-Path (Join-Path $HomeDir '.claude') 'commands'
 $DestTool = Join-Path $DestBase 'commit-tool'
 
-# Track results
-$Installed = [System.Collections.Generic.List[string]]::new()
-$Skipped = [System.Collections.Generic.List[string]]::new()
+New-Item -ItemType Directory -Force -Path $DestBase | Out-Null
+New-Item -ItemType Directory -Force -Path $DestTool | Out-Null
 
-# Copy a file with overwrite control
-function Copy-FileControlled {
-    param(
-        [string]$Src,
-        [string]$Dest,
-        [bool]$CanOverwrite
-    )
-    if (Test-Path $Dest) {
-        if ($CanOverwrite) {
-            Copy-Item -Path $Src -Destination $Dest -Force
-            $Installed.Add("$Dest (overwritten)")
-        } else {
-            $Skipped.Add("$Dest (exists)")
-        }
-    } else {
-        Copy-Item -Path $Src -Destination $Dest
-        $Installed.Add($Dest)
-    }
-}
+$Installed = New-Object System.Collections.Generic.List[string]
+$Skipped = New-Object System.Collections.Generic.List[string]
 
-# Determine overwrite policy for a file
 function Get-CanOverwrite {
-    param([string]$File)
-    switch -Wildcard ($File) {
-        '*.sh'     { return [bool]$UpgradeSh }
-        '*.md'     { return [bool]$UpgradeMd }
-        '*.config' { return $false }
-        default    { return $false }
-    }
+  param([Parameter(Mandatory = $true)][string]$PathOrName)
+
+  $ext = [IO.Path]::GetExtension($PathOrName).ToLowerInvariant()
+  switch ($ext) {
+    '.sh' { return [bool]$UpgradeSh }
+    '.md' { return [bool]$UpgradeMd }
+    '.config' { return $false } # Never overwrite config files
+    default { return $false }
+  }
 }
 
-# Create destination directories
-New-Item -ItemType Directory -Path $DestBase -Force | Out-Null
-New-Item -ItemType Directory -Path $DestTool -Force | Out-Null
+function Copy-FileControlled {
+  param(
+    [Parameter(Mandatory = $true)][string]$Source,
+    [Parameter(Mandatory = $true)][string]$Destination,
+    [Parameter(Mandatory = $true)][bool]$CanOverwrite
+  )
+
+  if (Test-Path -LiteralPath $Destination) {
+    if ($CanOverwrite) {
+      Copy-Item -LiteralPath $Source -Destination $Destination -Force
+      $Installed.Add("$Destination (overwritten)") | Out-Null
+    } else {
+      $Skipped.Add("$Destination (exists)") | Out-Null
+    }
+    return
+  }
+
+  Copy-Item -LiteralPath $Source -Destination $Destination
+  $Installed.Add($Destination) | Out-Null
+}
 
 # Install .md files to commands/
-foreach ($md in Get-ChildItem -Path $SrcCommands -Filter '*.md' -File -ErrorAction SilentlyContinue) {
-    $dest = Join-Path $DestBase $md.Name
-    Copy-FileControlled -Src $md.FullName -Dest $dest -CanOverwrite (Get-CanOverwrite $md.Name)
+Get-ChildItem -LiteralPath $SrcCommands -Filter '*.md' -File -ErrorAction Stop | ForEach-Object {
+  $dest = Join-Path $DestBase $_.Name
+  Copy-FileControlled -Source $_.FullName -Destination $dest -CanOverwrite (Get-CanOverwrite -PathOrName $_.Name)
 }
 
-# Install commit-tool.sh and commit-tool.config
-Copy-FileControlled -Src (Join-Path $SrcCommands 'commit-tool' 'commit-tool.sh') `
-                    -Dest (Join-Path $DestTool 'commit-tool.sh') `
-                    -CanOverwrite (Get-CanOverwrite 'commit-tool.sh')
-Copy-FileControlled -Src (Join-Path $SrcCommands 'commit-tool' 'commit-tool.config') `
-                    -Dest (Join-Path $DestTool 'commit-tool.config') `
-                    -CanOverwrite (Get-CanOverwrite 'commit-tool.config')
+$CommitToolDir = Join-Path $SrcCommands 'commit-tool'
+Copy-FileControlled `
+  -Source (Join-Path $CommitToolDir 'commit-tool.sh') `
+  -Destination (Join-Path $DestTool 'commit-tool.sh') `
+  -CanOverwrite (Get-CanOverwrite -PathOrName 'commit-tool.sh')
 
-# Install hooks if requested
+Copy-FileControlled `
+  -Source (Join-Path $CommitToolDir 'commit-tool.config') `
+  -Destination (Join-Path $DestTool 'commit-tool.config') `
+  -CanOverwrite (Get-CanOverwrite -PathOrName 'commit-tool.config')
+
 if ($Hooks) {
-    $hookPatterns = @('hook-*.sh', 'hook-*.config')
-    foreach ($pattern in $hookPatterns) {
-        foreach ($hook in Get-ChildItem -Path (Join-Path $SrcCommands 'commit-tool') -Filter $pattern -File -ErrorAction SilentlyContinue) {
-            $dest = Join-Path $DestTool $hook.Name
-            Copy-FileControlled -Src $hook.FullName -Dest $dest -CanOverwrite (Get-CanOverwrite $hook.Name)
-        }
+  Get-ChildItem -LiteralPath $CommitToolDir -File -ErrorAction Stop |
+    Where-Object { $_.Name -like 'hook-*.sh' -or $_.Name -like 'hook-*.config' } |
+    ForEach-Object {
+      $dest = Join-Path $DestTool $_.Name
+      Copy-FileControlled -Source $_.FullName -Destination $dest -CanOverwrite (Get-CanOverwrite -PathOrName $_.Name)
     }
 }
 
-# Report results
-Write-Host "Installation complete."
-Write-Host ""
+Write-Host 'Installation complete.'
+Write-Host ''
 
 if ($Installed.Count -gt 0) {
-    Write-Host "Installed:"
-    foreach ($f in $Installed) {
-        Write-Host "  $f"
-    }
+  Write-Host 'Installed:'
+  foreach ($item in $Installed) { Write-Host "  $item" }
 }
 
 if ($Skipped.Count -gt 0) {
-    Write-Host ""
-    Write-Host "Skipped (use -UpgradeSh or -UpgradeMd to overwrite):"
-    foreach ($f in $Skipped) {
-        Write-Host "  $f"
-    }
+  Write-Host ''
+  Write-Host 'Skipped (use --upgrade-sh/-UpgradeSh or --upgrade-md/-UpgradeMd to overwrite):'
+  foreach ($item in $Skipped) { Write-Host "  $item" }
 }
