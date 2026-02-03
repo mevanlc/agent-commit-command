@@ -143,14 +143,18 @@ run_hooks_for() {
       echo "Return code: ${rc}"
       echo ""
       echo "Stop and help the user resolve."
-      exit 1
+      return 1
     fi
     echo -n "$hook_output"
   done < <(printf '%s\0' "${hooks[@]}" | sort -z)
 }
 
 # Run preflight hooks
-PREFLIGHT_OUTPUT=$(run_hooks_for preflight)
+PREFLIGHT_OUTPUT=""
+if ! PREFLIGHT_OUTPUT="$(run_hooks_for preflight)"; then
+  [[ -n "$PREFLIGHT_OUTPUT" ]] && echo "$PREFLIGHT_OUTPUT"
+  exit 1
+fi
 
 # === GATHER GIT CONTEXT ===
 
