@@ -12,15 +12,14 @@ for case_dir in "${SCRIPT_DIR}"/*/; do
   [[ -d "$case_dir" ]] || continue
   [[ -f "${case_dir}/gen_repo.sh" ]] || continue
 
-  if "${SCRIPT_DIR}/run_test.sh" "$case_dir"; then
-    ((PASS++))
+  rc=0
+  "${SCRIPT_DIR}/run_test.sh" "$case_dir" || rc=$?
+  if [[ $rc -eq 0 ]]; then
+    PASS=$((PASS + 1))
+  elif [[ $rc -eq 2 ]]; then
+    SKIP=$((SKIP + 1))
   else
-    rc=$?
-    if [[ $rc -eq 2 ]]; then
-      ((SKIP++))
-    else
-      ((FAIL++))
-    fi
+    FAIL=$((FAIL + 1))
   fi
 done
 
