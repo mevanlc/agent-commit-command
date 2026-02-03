@@ -57,12 +57,18 @@ done
 USER_NAME=$($GIT_CMD config user.name)
 USER_EMAIL=$($GIT_CMD config user.email)
 
+# Some repos have no commits yet. Avoid treating `git log` failures as fatal.
+HAS_COMMITS=0
+if $GIT_CMD rev-parse --verify HEAD >/dev/null 2>&1; then
+  HAS_COMMITS=1
+fi
+
 # === IDENTITY CHECKS ===
 
 IDENTITY_WARNINGS=""
 
 # Check: current email appears with different name in log
-if [[ "$ENFORCE_NAME" == "1" ]] || [[ ${#CONFIG_IDS[@]} -eq 0 ]]; then
+if [[ $HAS_COMMITS -eq 1 && ( "$ENFORCE_NAME" == "1" || ${#CONFIG_IDS[@]} -eq 0 ) ]]; then
   OTHER_NAME=$($GIT_CMD log --format='%an' --author="<${USER_EMAIL}>" -1 2>/dev/null || true)
   if [[ -n "$OTHER_NAME" && "$OTHER_NAME" != "$USER_NAME" ]]; then
     IDENTITY_WARNINGS+="**Warning:** Your email \`${USER_EMAIL}\` has committed here as \`${OTHER_NAME}\`, but you're about to commit as \`${USER_NAME}\`.\n\n"
@@ -70,7 +76,7 @@ if [[ "$ENFORCE_NAME" == "1" ]] || [[ ${#CONFIG_IDS[@]} -eq 0 ]]; then
 fi
 
 # Check: multiple configured IDs have commits in this repo
-if [[ "$ENFORCE_ONE_ID_PER_REPO" == "1" && ${#CONFIG_IDS[@]} -gt 0 ]]; then
+if [[ $HAS_COMMITS -eq 1 && "$ENFORCE_ONE_ID_PER_REPO" == "1" && ${#CONFIG_IDS[@]} -gt 0 ]]; then
   CURRENT_ID="${USER_NAME} <${USER_EMAIL}>"
 
   # Collect all configured IDs that have commits in this repo
@@ -83,12 +89,12 @@ if [[ "$ENFORCE_ONE_ID_PER_REPO" == "1" && ${#CONFIG_IDS[@]} -gt 0 ]]; then
     id_email="${id##* <}"
     id_email="${id_email%>}"
 
-    count=$($GIT_CMD log --format='%ae' --author="<${id_email}>" 2>/dev/null | wc -l)
+    count=$({ $GIT_CMD log --format='%ae' --author="<${id_email}>" 2>/dev/null || true; } | wc -l)
     if [[ "$count" -gt 0 ]]; then
       IDS_WITH_COMMITS+=("$id")
       ID_COMMIT_COUNT["$id"]="$count"
-      ID_OLDEST["$id"]=$($GIT_CMD log --format='%h %s' --author="<${id_email}>" 2>/dev/null | tail -1)
-      ID_NEWEST["$id"]=$($GIT_CMD log --format='%h %s' --author="<${id_email}>" -1 2>/dev/null)
+      ID_OLDEST["$id"]=$({ $GIT_CMD log --format='%h %s' --author="<${id_email}>" 2>/dev/null || true; } | tail -1)
+      ID_NEWEST["$id"]=$($GIT_CMD log --format='%h %s' --author="<${id_email}>" -1 2>/dev/null || true)
     fi
   done
 
