@@ -6,10 +6,10 @@ argument-hint: --<staged|all|ask> [additional instructions]
 Run the commit helper script, passing the full user arguments as a *single* quoted string:
 
 ```sh
-~/.codex/commands/commit-tool/commit-tool.sh git "$ARGUMENTS"
+~/.codex/prompts/commit-tool/commit-tool.sh git "$ARGUMENTS"
 ```
 
-If that path does not exist, tell the user to install/upgrade the tool into `~/.codex/commands/commit-tool/` and then retry.
+If that path does not exist, tell the user to install/upgrade the tool into `~/.codex/prompts/commit-tool/` and then retry.
 
 Recommended install (from this repo):
 

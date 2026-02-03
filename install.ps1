@@ -105,7 +105,12 @@ if (-not (Test-Path -LiteralPath (Join-Path $CommitToolSrc 'commit-tool.config')
   throw "Missing expected file: $(Join-Path $CommitToolSrc 'commit-tool.config')"
 }
 
-$DestCommands = Join-Path $DestRoot 'commands'
+# Codex stores slash commands in ~/.codex/prompts/.
+$destSubdir =
+  if ($Codex -or ([IO.Path]::GetFileName($DestRoot.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)) -eq '.codex')) { 'prompts' }
+  else { 'commands' }
+
+$DestCommands = Join-Path $DestRoot $destSubdir
 $DestTool = Join-Path $DestCommands 'commit-tool'
 New-Item -ItemType Directory -Force -Path $DestCommands | Out-Null
 New-Item -ItemType Directory -Force -Path $DestTool | Out-Null
@@ -182,4 +187,3 @@ if ($Skipped.Count -gt 0) {
   Write-Host 'Skipped (use -UpgradeSh or -UpgradeMd to overwrite):'
   foreach ($item in $Skipped) { Write-Host "  $item" }
 }
-

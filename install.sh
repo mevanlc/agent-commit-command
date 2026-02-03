@@ -6,14 +6,14 @@
 #   ./install.sh --claude [options]
 #   ./install.sh <srcdir> <dstdir> [options]
 #
-# Where:
-#   srcdir: repo subdir containing ./commands (e.g. ./codex or ./claude)
-#   dstdir: base config dir (e.g. ~/.codex/ or ~/.claude/)
-#
-# Options:
-#   --hooks       Also install hook-*.{sh,config} files
-#   --upgrade-sh  Overwrite existing .sh files (not .config)
-#   --upgrade-md  Overwrite existing .md files (not .config)
+	# Where:
+	#   srcdir: repo subdir containing ./commands (e.g. ./codex or ./claude)
+	#   dstdir: base config dir (e.g. ~/.codex/ or ~/.claude/)
+	#
+	# Options:
+	#   --hooks       Also install hook-*.{sh,config} files
+	#   --upgrade-sh  Overwrite existing .sh files (not .config)
+	#   --upgrade-md  Overwrite existing .md files (not .config)
 
 set -euo pipefail
 
@@ -88,10 +88,16 @@ fi
 SRCDIR="${SRCDIR/#\~/$HOME}"
 DSTDIR="${DSTDIR/#\~/$HOME}"
 
-SRC_COMMANDS="${SRCDIR%/}/commands"
-DEST_ROOT="${DSTDIR%/}"
-DEST_COMMANDS="${DEST_ROOT}/commands"
-DEST_TOOL="${DEST_COMMANDS}/commit-tool"
+	SRC_COMMANDS="${SRCDIR%/}/commands"
+	DEST_ROOT="${DSTDIR%/}"
+	DEST_SUBDIR="commands"
+	# Codex stores slash commands in ~/.codex/prompts/.
+	# When installing to Codex, put both the .md prompts and commit-tool under prompts/.
+	if [[ "$MODE" == "codex" || "$(basename "${DEST_ROOT}")" == ".codex" || "$(basename "${SRCDIR%/}")" == "codex" ]]; then
+	  DEST_SUBDIR="prompts"
+	fi
+	DEST_COMMANDS="${DEST_ROOT}/${DEST_SUBDIR}"
+	DEST_TOOL="${DEST_COMMANDS}/commit-tool"
 
 if [[ ! -d "$SRC_COMMANDS" ]]; then
   echo "Missing expected source directory: $SRC_COMMANDS" >&2
@@ -177,4 +183,3 @@ if [[ ${#SKIPPED[@]} -gt 0 ]]; then
     echo "  $f"
   done
 fi
-
