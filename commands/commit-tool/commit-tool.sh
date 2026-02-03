@@ -9,6 +9,12 @@ set -euo pipefail
 
 # set -x
 
+# === OUTPUT SIZE THRESHOLD ===
+# Claude Code truncates output over 30000 characters, which can cut off
+# critical instructions. We check total output size and externalize the
+# diff to a temp file if needed to keep instructions visible.
+MAX_OUTPUT_CHARS=28000  # Leave some margin below 30000
+
 # === --write-config HANDLING ===
 
 if [[ "${1:-}" == "--write-config" ]]; then
@@ -194,36 +200,80 @@ ${commits}
 "
 fi
 
+# === OUTPUT COMPOSITION HELPERS ===
+
+# These functions build output sections into variables so we can
+# measure total size before emitting, and externalize the diff if needed.
+
+compose_diff_inline() {
+  local diff_content="$1"
+  cat <<EOF
+# Diff
+
+Output of \`$GIT_CMD diff --cached\`:
+\`\`\`diff
+$diff_content
+\`\`\`
+
+EOF
+}
+
+compose_diff_external() {
+  local diff_file="$1"
+  local char_count="$2"
+  cat <<EOF
+# Diff
+
+**Diff too large for inline display** ($char_count characters)
+
+The diff has been saved to: \`$diff_file\`
+
+**Instructions for reviewing the diff:**
+1. Use the Read tool to examine the diff file (you may need to read it in chunks using offset/limit if it's very large)
+2. After you have fully reviewed the diff, delete the temp file
+3. Then proceed with the commit review as normal
+
+EOF
+}
+
+compose_diff_too_many_lines() {
+  local line_count="$1"
+  cat <<EOF
+# Diff
+**DIFF TOO LARGE** ($line_count lines) - discuss strategies with user:
+- Split the commit
+- Review anyway (might fit context)
+- Reduce diff context lines
+- Skip lock files
+
+EOF
+}
+
 # === MODE: --staged ===
 
 if [[ "$MODE" == "--staged" ]]; then
-  cat <<'EOF'
+  # Check early exit conditions first (these output directly and exit)
+  if [[ -n "$CONFLICTS" ]]; then
+    cat <<'EOF'
 # Git Commit - Staged Only Mode
 
 Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 EOF
-
-  if [[ -n "$EXTRA_INSTRUCTIONS" ]]; then
-    cat <<EOF
+    if [[ -n "$EXTRA_INSTRUCTIONS" ]]; then
+      cat <<EOF
 # Additional Instructions from User
 $EXTRA_INSTRUCTIONS
 
 EOF
-  fi
-
-  cat <<EOF
+    fi
+    cat <<EOF
 Branch: \`$BRANCH\`
 Identity: \`$USER_NAME <$USER_EMAIL>\`
 
 EOF
-
-  # Report sections
-  [[ -n "$RECENT_COMMITS_SECTION" ]] && echo "$RECENT_COMMITS_SECTION"
-  # Preflight hook output (identity reports and warnings)
-  [[ -n "$PREFLIGHT_OUTPUT" ]] && echo "$PREFLIGHT_OUTPUT"
-
-  if [[ -n "$CONFLICTS" ]]; then
+    [[ -n "$RECENT_COMMITS_SECTION" ]] && echo "$RECENT_COMMITS_SECTION"
+    [[ -n "$PREFLIGHT_OUTPUT" ]] && echo "$PREFLIGHT_OUTPUT"
     cat <<EOF
 # CONFLICTS DETECTED - STOP
 \`\`\`
@@ -237,6 +287,8 @@ EOF
 
   if [[ -z "$STAGED_FILES" ]]; then
     cat <<EOF
+# Git Commit - Staged Only Mode
+
 # Nothing Staged - STOP
 
 There are no staged changes. Inform the user:
@@ -248,47 +300,41 @@ EOF
     exit 0
   fi
 
-  # Get staged status (filtered to only staged changes)
+  # Get staged status and diff
   STAGED_STATUS=$($GIT_CMD status --porcelain | grep '^[MADRCT]' || true)
+  STAGED_DIFF=$($GIT_CMD diff --cached)
+  DIFF_LINES=$(echo "$STAGED_DIFF" | wc -l)
 
-  cat <<EOF
-# Staged Changes
+  # Check line count threshold first
+  if [[ $DIFF_LINES -gt 8000 ]]; then
+    # Too many lines - use the original "discuss with user" approach
+    OUTPUT_HEADER="# Git Commit - Staged Only Mode
+
+Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+
+"
+    [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
+$EXTRA_INSTRUCTIONS
+
+"
+    OUTPUT_HEADER+="Branch: \`$BRANCH\`
+Identity: \`$USER_NAME <$USER_EMAIL>\`
+
+"
+    [[ -n "$RECENT_COMMITS_SECTION" ]] && OUTPUT_HEADER+="$RECENT_COMMITS_SECTION"
+    [[ -n "$PREFLIGHT_OUTPUT" ]] && OUTPUT_HEADER+="$PREFLIGHT_OUTPUT"
+
+    OUTPUT_PRE_DIFF="# Staged Changes
 
 Output of \`$GIT_CMD status --porcelain | grep '^[MADRCT]'\`:
 \`\`\`
 $STAGED_STATUS
 \`\`\`
 
-EOF
+"
+    OUTPUT_DIFF=$(compose_diff_too_many_lines "$DIFF_LINES")
 
-  # Get staged diff
-  STAGED_DIFF=$($GIT_CMD diff --cached)
-  DIFF_LINES=$(echo "$STAGED_DIFF" | wc -l)
-
-  if [[ $DIFF_LINES -gt 8000 ]]; then
-    cat <<EOF
-# Diff
-**DIFF TOO LARGE** ($DIFF_LINES lines) - discuss strategies with user:
-- Split the commit
-- Review anyway (might fit context)
-- Reduce diff context lines
-- Skip lock files
-
-EOF
-  else
-    cat <<EOF
-# Diff
-
-Output of \`$GIT_CMD diff --cached\`:
-\`\`\`diff
-$STAGED_DIFF
-\`\`\`
-
-EOF
-  fi
-
-  cat <<EOF
-# Instructions
+    OUTPUT_INSTRUCTIONS="# Instructions
 
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
 2. Match the style of recent commits shown above
@@ -301,40 +347,95 @@ EOF
 Stop and warn if staged files include:
 - Secrets (\`.env\`, credentials, API keys, certs)
 - Large binaries that look accidental
-EOF
+"
+    echo -n "${OUTPUT_HEADER}${OUTPUT_PRE_DIFF}${OUTPUT_DIFF}${OUTPUT_INSTRUCTIONS}"
+    exit 0
+  fi
+
+  # Compose full output to measure size
+  OUTPUT_HEADER="# Git Commit - Staged Only Mode
+
+Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+
+"
+  [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
+$EXTRA_INSTRUCTIONS
+
+"
+  OUTPUT_HEADER+="Branch: \`$BRANCH\`
+Identity: \`$USER_NAME <$USER_EMAIL>\`
+
+"
+  [[ -n "$RECENT_COMMITS_SECTION" ]] && OUTPUT_HEADER+="$RECENT_COMMITS_SECTION"
+  [[ -n "$PREFLIGHT_OUTPUT" ]] && OUTPUT_HEADER+="$PREFLIGHT_OUTPUT"
+
+  OUTPUT_PRE_DIFF="# Staged Changes
+
+Output of \`$GIT_CMD status --porcelain | grep '^[MADRCT]'\`:
+\`\`\`
+$STAGED_STATUS
+\`\`\`
+
+"
+
+  OUTPUT_DIFF_INLINE=$(compose_diff_inline "$STAGED_DIFF")
+
+  OUTPUT_INSTRUCTIONS="# Instructions
+
+1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
+2. Match the style of recent commits shown above
+3. $COMMIT_REVIEW_FORMAT
+4. If confirmed: commit using HEREDOC format
+5. Show resulting commit hash
+
+# Safety Checks
+
+Stop and warn if staged files include:
+- Secrets (\`.env\`, credentials, API keys, certs)
+- Large binaries that look accidental
+"
+
+  FULL_OUTPUT="${OUTPUT_HEADER}${OUTPUT_PRE_DIFF}${OUTPUT_DIFF_INLINE}${OUTPUT_INSTRUCTIONS}"
+  CHAR_COUNT=${#FULL_OUTPUT}
+
+  if [[ $CHAR_COUNT -gt $MAX_OUTPUT_CHARS ]]; then
+    # Externalize diff to file
+    DIFF_FILE="/tmp/commit-tool-diff-$$.txt"
+    echo "$STAGED_DIFF" > "$DIFF_FILE"
+    DIFF_CHAR_COUNT=${#STAGED_DIFF}
+    OUTPUT_DIFF_EXTERNAL=$(compose_diff_external "$DIFF_FILE" "$DIFF_CHAR_COUNT")
+    FULL_OUTPUT="${OUTPUT_HEADER}${OUTPUT_PRE_DIFF}${OUTPUT_DIFF_EXTERNAL}${OUTPUT_INSTRUCTIONS}"
+  fi
+
+  echo -n "$FULL_OUTPUT"
   exit 0
 fi
 
 # === MODE: --all ===
 
 if [[ "$MODE" == "--all" ]]; then
-  cat <<'EOF'
+  # Check early exit conditions first
+  if [[ -n "$CONFLICTS" ]]; then
+    cat <<'EOF'
 # Git Commit - Stage All Mode
 
 Stage all outstanding changes, then commit.
 
 EOF
-
-  if [[ -n "$EXTRA_INSTRUCTIONS" ]]; then
-    cat <<EOF
+    if [[ -n "$EXTRA_INSTRUCTIONS" ]]; then
+      cat <<EOF
 # Additional Instructions from User
 $EXTRA_INSTRUCTIONS
 
 EOF
-  fi
-
-  cat <<EOF
+    fi
+    cat <<EOF
 Branch: \`$BRANCH\`
 Identity: \`$USER_NAME <$USER_EMAIL>\`
 
 EOF
-
-  # Report sections
-  [[ -n "$RECENT_COMMITS_SECTION" ]] && echo "$RECENT_COMMITS_SECTION"
-  # Preflight hook output (identity reports and warnings)
-  [[ -n "$PREFLIGHT_OUTPUT" ]] && echo "$PREFLIGHT_OUTPUT"
-
-  if [[ -n "$CONFLICTS" ]]; then
+    [[ -n "$RECENT_COMMITS_SECTION" ]] && echo "$RECENT_COMMITS_SECTION"
+    [[ -n "$PREFLIGHT_OUTPUT" ]] && echo "$PREFLIGHT_OUTPUT"
     cat <<EOF
 # CONFLICTS DETECTED - STOP
 \`\`\`
@@ -348,6 +449,8 @@ EOF
 
   if [[ -z "$STATUS" ]]; then
     cat <<'EOF'
+# Git Commit - Stage All Mode
+
 # No Changes - STOP
 
 Working tree is clean. Nothing to commit. Inform the user.
@@ -361,11 +464,30 @@ EOF
   $GIT_CMD diff --cached > "$BACKUP_PATCH" 2>/dev/null || true
   $GIT_CMD add -A
 
-  # Show staged status (after staging everything)
+  # Get staged status and diff
   STAGED_STATUS=$($GIT_CMD status --porcelain 2>/dev/null || true)
+  ALL_DIFF=$($GIT_CMD diff --cached 2>/dev/null || true)
+  DIFF_LINES=$(echo "$ALL_DIFF" | wc -l)
 
-  cat <<EOF
-# Staged Changes
+  # Check line count threshold first
+  if [[ $DIFF_LINES -gt 8000 ]]; then
+    OUTPUT_HEADER="# Git Commit - Stage All Mode
+
+Stage all outstanding changes, then commit.
+
+"
+    [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
+$EXTRA_INSTRUCTIONS
+
+"
+    OUTPUT_HEADER+="Branch: \`$BRANCH\`
+Identity: \`$USER_NAME <$USER_EMAIL>\`
+
+"
+    [[ -n "$RECENT_COMMITS_SECTION" ]] && OUTPUT_HEADER+="$RECENT_COMMITS_SECTION"
+    [[ -n "$PREFLIGHT_OUTPUT" ]] && OUTPUT_HEADER+="$PREFLIGHT_OUTPUT"
+
+    OUTPUT_PRE_DIFF="# Staged Changes
 
 Ran \`$GIT_CMD add -A\` to stage all changes.
 
@@ -377,35 +499,10 @@ $STAGED_STATUS
 > Staging backup saved to \`$BACKUP_PATCH\`
 > To abort: \`$GIT_CMD reset HEAD && $GIT_CMD apply --cached $BACKUP_PATCH\`
 
-EOF
+"
+    OUTPUT_DIFF=$(compose_diff_too_many_lines "$DIFF_LINES")
 
-  # Get diff of staged changes
-  ALL_DIFF=$($GIT_CMD diff --cached 2>/dev/null || true)
-  DIFF_LINES=$(echo "$ALL_DIFF" | wc -l)
-
-  if [[ $DIFF_LINES -gt 8000 ]]; then
-    cat <<EOF
-# Diff
-**DIFF TOO LARGE** ($DIFF_LINES lines) - discuss strategies with user:
-- Split into multiple commits
-- Review anyway (might fit context)
-- Reduce diff context lines
-
-EOF
-  else
-    cat <<EOF
-# Diff
-
-Output of \`$GIT_CMD diff --cached\`:
-\`\`\`diff
-$ALL_DIFF
-\`\`\`
-
-EOF
-  fi
-
-  cat <<EOF
-# Instructions
+    OUTPUT_INSTRUCTIONS="# Instructions
 
 Changes are already staged. Review and confirm:
 
@@ -421,7 +518,75 @@ Stop and warn if changes include:
 - Secrets (\`.env\`, credentials, API keys, certs)
 - Large binaries that look accidental
 - Files that seem unrelated to the apparent intent
-EOF
+"
+    echo -n "${OUTPUT_HEADER}${OUTPUT_PRE_DIFF}${OUTPUT_DIFF}${OUTPUT_INSTRUCTIONS}"
+    exit 0
+  fi
+
+  # Compose full output to measure size
+  OUTPUT_HEADER="# Git Commit - Stage All Mode
+
+Stage all outstanding changes, then commit.
+
+"
+  [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
+$EXTRA_INSTRUCTIONS
+
+"
+  OUTPUT_HEADER+="Branch: \`$BRANCH\`
+Identity: \`$USER_NAME <$USER_EMAIL>\`
+
+"
+  [[ -n "$RECENT_COMMITS_SECTION" ]] && OUTPUT_HEADER+="$RECENT_COMMITS_SECTION"
+  [[ -n "$PREFLIGHT_OUTPUT" ]] && OUTPUT_HEADER+="$PREFLIGHT_OUTPUT"
+
+  OUTPUT_PRE_DIFF="# Staged Changes
+
+Ran \`$GIT_CMD add -A\` to stage all changes.
+
+Output of \`$GIT_CMD status --porcelain\`:
+\`\`\`
+$STAGED_STATUS
+\`\`\`
+
+> Staging backup saved to \`$BACKUP_PATCH\`
+> To abort: \`$GIT_CMD reset HEAD && $GIT_CMD apply --cached $BACKUP_PATCH\`
+
+"
+
+  OUTPUT_DIFF_INLINE=$(compose_diff_inline "$ALL_DIFF")
+
+  OUTPUT_INSTRUCTIONS="# Instructions
+
+Changes are already staged. Review and confirm:
+
+1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
+2. Match the style of recent commits shown above
+3. $COMMIT_REVIEW_FORMAT
+4. If confirmed: commit using HEREDOC format, then show resulting hash
+5. If declined: run \`$GIT_CMD reset HEAD && $GIT_CMD apply --cached $BACKUP_PATCH\` to restore previous staging
+
+# Safety Checks
+
+Stop and warn if changes include:
+- Secrets (\`.env\`, credentials, API keys, certs)
+- Large binaries that look accidental
+- Files that seem unrelated to the apparent intent
+"
+
+  FULL_OUTPUT="${OUTPUT_HEADER}${OUTPUT_PRE_DIFF}${OUTPUT_DIFF_INLINE}${OUTPUT_INSTRUCTIONS}"
+  CHAR_COUNT=${#FULL_OUTPUT}
+
+  if [[ $CHAR_COUNT -gt $MAX_OUTPUT_CHARS ]]; then
+    # Externalize diff to file
+    DIFF_FILE="/tmp/commit-tool-diff-$$.txt"
+    echo "$ALL_DIFF" > "$DIFF_FILE"
+    DIFF_CHAR_COUNT=${#ALL_DIFF}
+    OUTPUT_DIFF_EXTERNAL=$(compose_diff_external "$DIFF_FILE" "$DIFF_CHAR_COUNT")
+    FULL_OUTPUT="${OUTPUT_HEADER}${OUTPUT_PRE_DIFF}${OUTPUT_DIFF_EXTERNAL}${OUTPUT_INSTRUCTIONS}"
+  fi
+
+  echo -n "$FULL_OUTPUT"
   exit 0
 fi
 

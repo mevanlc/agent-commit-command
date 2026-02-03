@@ -1,18 +1,5 @@
 # Git Commit - Staged Only Mode
 
-Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
-
-Branch: `main`
-Identity: `Mike Clark <mevanlc@gmail.com>`
-
-# Recent Commits
-```
-HASH Standardize on labeled git status --porcelain output across all modes
-HASH Only show identity reports when there's a conflict
-HASH Add test infrastructure with per-case gen_repo.sh/gen_actual.sh structure
-HASH Initial commit: commit-tool with hook support and test infrastructure
-```
-
 # Nothing Staged - STOP
 
 There are no staged changes. Inform the user:

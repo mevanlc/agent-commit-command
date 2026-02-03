@@ -1,43 +1,5 @@
 # Git Commit - Staged Only Mode
 
-Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
-
-Branch: `main`
-Identity: `Alice <alice@example.com>`
-
-# Recent Commits
-```
-HASH Bob commit
-HASH Alice commit
-```
-
-## Multiple configured IDs have committed to this repo
-
-`Alice <alice@example.com>` (       1 commits):
-```
-Oldest: HASH Alice commit
-Newest: HASH Alice commit
-```
-
-`Bob <bob@example.com>` (       1 commits):
-```
-Oldest: HASH Bob commit
-Newest: HASH Bob commit
-```
-
-> Current identity: `Alice <alice@example.com>`
-
----
-
-**STOP - IDENTITY CONFLICT GATE**
-
-Do NOT proceed with the commit flow. Instead:
-1. Relay the identity conflict report above to the user verbatim (they cannot see slash command output)
-2. Ask for explicit acknowledgment before proceeding
-3. **IGNORE everything below this line** until user confirms
-
-If user confirms, THEN proceed with the commit flow (review diff, propose message, etc.)
-If user does not confirm, cancel the commit.
 # Nothing Staged - STOP
 
 There are no staged changes. Inform the user:

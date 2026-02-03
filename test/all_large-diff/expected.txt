@@ -15,7 +15,7 @@ Ran `git add -A` to stage all changes.
 
 Output of `git status --porcelain`:
 ```
-M  file.txt
+A  large_file.txt
 ```
 
 > Staging backup saved to `/tmp/commit-tool-staged-backup-PID.patch`
@@ -23,16 +23,14 @@ M  file.txt
 
 # Diff
 
-Output of `git diff --cached`:
-```diff
-diff --git a/file.txt b/file.txt
-index HASH..HASH 100644
---- a/file.txt
-+++ b/file.txt
-@@ -1 +1,2 @@
- initial
-+modified
-```# Instructions
+**Diff too large for inline display** (NNNNN characters)
+
+The diff has been saved to: `/tmp/commit-tool-diff-PID.txt`
+
+**Instructions for reviewing the diff:**
+1. Use the Read tool to examine the diff file (you may need to read it in chunks using offset/limit if it's very large)
+2. After you have fully reviewed the diff, delete the temp file
+3. Then proceed with the commit review as normal# Instructions
 
 Changes are already staged. Review and confirm:
 

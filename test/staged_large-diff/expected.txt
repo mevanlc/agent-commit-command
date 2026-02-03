@@ -13,21 +13,19 @@ HASH Initial commit
 
 Output of `git status --porcelain | grep '^[MADRCT]'`:
 ```
-A  staged.txt
+A  large_file.txt
 ```
 
 # Diff
 
-Output of `git diff --cached`:
-```diff
-diff --git a/staged.txt b/staged.txt
-new file mode 100644
-index HASH..HASH
---- /dev/null
-+++ b/staged.txt
-@@ -0,0 +1 @@
-+staged change
-```# Instructions
+**Diff too large for inline display** (NNNNN characters)
+
+The diff has been saved to: `/tmp/commit-tool-diff-PID.txt`
+
+**Instructions for reviewing the diff:**
+1. Use the Read tool to examine the diff file (you may need to read it in chunks using offset/limit if it's very large)
+2. After you have fully reviewed the diff, delete the temp file
+3. Then proceed with the commit review as normal# Instructions
 
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
 2. Match the style of recent commits shown above
