@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+CASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$(dirname "$CASE_DIR")")"
+TARGET="${1:-${CASE_DIR}/actual.txt}"
+if [[ "$TARGET" != /* ]]; then
+  TARGET="${CASE_DIR}/${TARGET}"
+fi
+cd "${CASE_DIR}/repo"
+"${PROJECT_DIR}/commit-tool/commit-tool.sh" git --all 2>&1 | "${PROJECT_DIR}/test/normalize.sh" > "$TARGET"

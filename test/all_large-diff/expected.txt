@@ -18,8 +18,8 @@ Output of `git status --porcelain`:
 A  large_file.txt
 ```
 
-> Staging backup saved to `/tmp/commit-tool-staged-backup-PID.patch`
-> To abort: `git reset HEAD && git apply --cached /tmp/commit-tool-staged-backup-PID.patch`
+> Staging backup saved to `/tmp/commit-tool-staged-backup-PID.patch` (empty; nothing was staged before)
+> To abort: `git reset --mixed`
 
 # Diff
 
@@ -57,7 +57,7 @@ Proceed? ([y]es / [n]o)
 
 Wait for user confirmation before committing.
 4. If confirmed: commit using HEREDOC format, then show resulting hash
-5. If declined: run `git reset HEAD && git apply --cached /tmp/commit-tool-staged-backup-PID.patch` to restore previous staging
+5. If declined: run `git reset --mixed` to restore previous staging
 
 # Safety Checks
 
