@@ -459,10 +459,33 @@ EOF
     exit 0
   fi
 
-  # Save current staged state, then stage everything
-  BACKUP_PATCH="/tmp/commit-tool-staged-backup-$$.patch"
-  $GIT_CMD diff --cached > "$BACKUP_PATCH" 2>/dev/null || true
-  $GIT_CMD add -A
+	# Save current staged state, then stage everything
+	  BACKUP_PATCH="/tmp/commit-tool-staged-backup-$$.patch"
+	  $GIT_CMD diff --cached > "$BACKUP_PATCH" 2>/dev/null || true
+	  BACKUP_HAS_CONTENT=0
+	  [[ -s "$BACKUP_PATCH" ]] && BACKUP_HAS_CONTENT=1
+
+	  HAS_COMMITS=0
+	  $GIT_CMD rev-parse --verify HEAD >/dev/null 2>&1 && HAS_COMMITS=1
+
+	  RESET_INDEX_CMD=""
+	  if [[ "$HAS_COMMITS" -eq 1 ]]; then
+	    RESET_INDEX_CMD="$GIT_CMD reset --mixed"
+	  else
+	    # New repo with no commits yet: HEAD does not exist, so git reset HEAD fails.
+	    RESET_INDEX_CMD="$GIT_CMD read-tree --empty"
+	  fi
+
+	  RESTORE_STAGING_CMD="$RESET_INDEX_CMD"
+	  if [[ "$BACKUP_HAS_CONTENT" -eq 1 ]]; then
+	    RESTORE_STAGING_CMD+=" && $GIT_CMD apply --cached \"$BACKUP_PATCH\""
+	  fi
+
+	  BACKUP_NOTE="Staging backup saved to \`$BACKUP_PATCH\`"
+	  if [[ "$BACKUP_HAS_CONTENT" -eq 0 ]]; then
+	    BACKUP_NOTE+=" (empty; nothing was staged before)"
+	  fi
+	  $GIT_CMD add -A
 
   # Get staged status and diff
   STAGED_STATUS=$($GIT_CMD status --porcelain 2>/dev/null || true)
@@ -487,7 +510,7 @@ Identity: \`$USER_NAME <$USER_EMAIL>\`
     [[ -n "$RECENT_COMMITS_SECTION" ]] && OUTPUT_HEADER+="$RECENT_COMMITS_SECTION"
     [[ -n "$PREFLIGHT_OUTPUT" ]] && OUTPUT_HEADER+="$PREFLIGHT_OUTPUT"
 
-    OUTPUT_PRE_DIFF="# Staged Changes
+	    OUTPUT_PRE_DIFF="# Staged Changes
 
 Ran \`$GIT_CMD add -A\` to stage all changes.
 
@@ -496,8 +519,8 @@ Output of \`$GIT_CMD status --porcelain\`:
 $STAGED_STATUS
 \`\`\`
 
-> Staging backup saved to \`$BACKUP_PATCH\`
-> To abort: \`$GIT_CMD reset HEAD && $GIT_CMD apply --cached $BACKUP_PATCH\`
+> $BACKUP_NOTE
+> To abort: \`$RESTORE_STAGING_CMD\`
 
 "
     OUTPUT_DIFF=$(compose_diff_too_many_lines "$DIFF_LINES")
@@ -510,7 +533,7 @@ Changes are already staged. Review and confirm:
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
 4. If confirmed: commit using HEREDOC format, then show resulting hash
-5. If declined: run \`$GIT_CMD reset HEAD && $GIT_CMD apply --cached $BACKUP_PATCH\` to restore previous staging
+5. If declined: run \`$RESTORE_STAGING_CMD\` to restore previous staging
 
 # Safety Checks
 
@@ -540,7 +563,7 @@ Identity: \`$USER_NAME <$USER_EMAIL>\`
   [[ -n "$RECENT_COMMITS_SECTION" ]] && OUTPUT_HEADER+="$RECENT_COMMITS_SECTION"
   [[ -n "$PREFLIGHT_OUTPUT" ]] && OUTPUT_HEADER+="$PREFLIGHT_OUTPUT"
 
-  OUTPUT_PRE_DIFF="# Staged Changes
+	  OUTPUT_PRE_DIFF="# Staged Changes
 
 Ran \`$GIT_CMD add -A\` to stage all changes.
 
@@ -549,8 +572,8 @@ Output of \`$GIT_CMD status --porcelain\`:
 $STAGED_STATUS
 \`\`\`
 
-> Staging backup saved to \`$BACKUP_PATCH\`
-> To abort: \`$GIT_CMD reset HEAD && $GIT_CMD apply --cached $BACKUP_PATCH\`
+> $BACKUP_NOTE
+> To abort: \`$RESTORE_STAGING_CMD\`
 
 "
 
@@ -564,7 +587,7 @@ Changes are already staged. Review and confirm:
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
 4. If confirmed: commit using HEREDOC format, then show resulting hash
-5. If declined: run \`$GIT_CMD reset HEAD && $GIT_CMD apply --cached $BACKUP_PATCH\` to restore previous staging
+5. If declined: run \`$RESTORE_STAGING_CMD\` to restore previous staging
 
 # Safety Checks
 
