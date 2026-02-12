@@ -2,9 +2,9 @@
 # install.ps1 - Install slash commands + commit-tool
 #
 # Usage:
-#   ./install.ps1 --codex [--hooks] [--upgrade-sh] [--upgrade-md]
-#   ./install.ps1 --claude [--hooks] [--upgrade-sh] [--upgrade-md]
-#   ./install.ps1 <srcdir> <dstdir> [--hooks] [--upgrade-sh] [--upgrade-md]
+#   ./install.ps1 -Codex [-Hooks] [-UpgradeSh] [-UpgradeMd]
+#   ./install.ps1 -Claude [-Hooks] [-UpgradeSh] [-UpgradeMd]
+#   ./install.ps1 <srcdir> <dstdir> [-Hooks] [-UpgradeSh] [-UpgradeMd]
 #
 # Where:
 #   srcdir: repo subdir containing ./commands (e.g. ./codex or ./claude)
@@ -15,9 +15,7 @@ param(
   [switch]$Codex,
   [switch]$Claude,
   [switch]$Hooks,
-  [Alias('upgrade-sh')]
   [switch]$UpgradeSh,
-  [Alias('upgrade-md')]
   [switch]$UpgradeMd,
   [Alias('h')]
   [switch]$Help,
@@ -34,14 +32,24 @@ $ErrorActionPreference = 'Stop'
 
 function Write-Usage {
   Write-Host 'Usage:'
-  Write-Host '  ./install.ps1 --codex [--hooks] [--upgrade-sh] [--upgrade-md]'
-  Write-Host '  ./install.ps1 --claude [--hooks] [--upgrade-sh] [--upgrade-md]'
-  Write-Host '  ./install.ps1 <srcdir> <dstdir> [--hooks] [--upgrade-sh] [--upgrade-md]'
+  Write-Host '  ./install.ps1 -Codex [-Hooks] [-UpgradeSh] [-UpgradeMd]'
+  Write-Host '  ./install.ps1 -Claude [-Hooks] [-UpgradeSh] [-UpgradeMd]'
+  Write-Host '  ./install.ps1 <srcdir> <dstdir> [-Hooks] [-UpgradeSh] [-UpgradeMd]'
+  Write-Host ''
+  Write-Host 'Note: PowerShell uses single-dash switches. Use ./install.sh for --long-options.'
   Write-Host ''
   Write-Host 'Examples:'
-  Write-Host '  ./install.ps1 --codex --upgrade-sh --upgrade-md'
-  Write-Host '  ./install.ps1 --claude --hooks'
-  Write-Host '  ./install.ps1 ./codex ~/.codex/ --upgrade-sh --upgrade-md'
+  Write-Host '  ./install.ps1 -Codex -UpgradeSh -UpgradeMd'
+  Write-Host '  ./install.ps1 -Claude -Hooks'
+  Write-Host '  ./install.ps1 ./codex ~/.codex/ -UpgradeSh -UpgradeMd'
+}
+
+function Exit-UsageError {
+  param([Parameter(Mandatory = $true)][string]$Message)
+  Write-Warning $Message
+  Write-Host ''
+  Write-Usage
+  exit 1
 }
 
 if ($Help) {
@@ -50,8 +58,7 @@ if ($Help) {
 }
 
 if ($RemainingArgs.Count -gt 0) {
-  [Console]::Error.WriteLine("Unknown option: $($RemainingArgs[0])")
-  exit 1
+  Exit-UsageError -Message "Unknown option: $($RemainingArgs[0])"
 }
 
 $ScriptDir =
@@ -64,11 +71,11 @@ $HomeDir =
   else { [Environment]::GetFolderPath('UserProfile') }
 
 if ($Codex -and $Claude) {
-  throw "Error: choose only one of --codex or --claude"
+  Exit-UsageError -Message 'choose only one of -Codex or -Claude'
 }
 
 if (($Codex -or $Claude) -and ($SrcDir -or $DstDir)) {
-  throw "Error: do not combine --codex/--claude with <srcdir> <dstdir>"
+  Exit-UsageError -Message 'do not combine -Codex/-Claude with <srcdir> <dstdir>'
 }
 
 $SourceRoot = $SrcDir
@@ -81,8 +88,7 @@ if ($Codex) {
   $DestRoot = Join-Path $HomeDir '.claude'
 } else {
   if (-not $SourceRoot -or -not $DestRoot) {
-    Write-Usage
-    throw "Error: expected <srcdir> <dstdir> or --codex/--claude"
+    Exit-UsageError -Message 'expected <srcdir> <dstdir> or -Codex/-Claude'
   }
 }
 
@@ -173,7 +179,7 @@ if ($Installed.Count -gt 0) {
 
 if ($Skipped.Count -gt 0) {
   Write-Host ''
-  Write-Host 'Skipped (use --upgrade-sh/-UpgradeSh or --upgrade-md/-UpgradeMd to overwrite):'
+  Write-Host 'Skipped (use -UpgradeSh or -UpgradeMd to overwrite):'
   foreach ($item in $Skipped) { Write-Host "  $item" }
 }
 
