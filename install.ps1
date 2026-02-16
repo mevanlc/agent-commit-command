@@ -2,8 +2,8 @@
 # install.ps1 - Install slash commands + commit-tool
 #
 # Usage:
-#   ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate]
-#   ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate]
+#   ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate] [srcdir]
+#   ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate] [srcdir]
 #   ./install.ps1 <srcdir> <dstdir> [-Hooks] [-SHUpdate] [-MDUpdate]
 #
 # Where:
@@ -32,8 +32,8 @@ $ErrorActionPreference = 'Stop'
 
 function Write-Usage {
   Write-Host 'Usage:'
-  Write-Host '  ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate]'
-  Write-Host '  ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate]'
+  Write-Host '  ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate] [srcdir]'
+  Write-Host '  ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate] [srcdir]'
   Write-Host '  ./install.ps1 <srcdir> <dstdir> [-Hooks] [-SHUpdate] [-MDUpdate]'
   Write-Host ''
   Write-Host 'Note: PowerShell uses single-dash switches. Use ./install.sh for --long-options.'
@@ -41,6 +41,7 @@ function Write-Usage {
   Write-Host 'Examples:'
   Write-Host '  ./install.ps1 -Codex -SHUpdate -MDUpdate'
   Write-Host '  ./install.ps1 -Claude -Hooks'
+  Write-Host '  ./install.ps1 -Codex ./codex -SHUpdate -MDUpdate'
   Write-Host '  ./install.ps1 ./codex ~/.codex/ -SHUpdate -MDUpdate'
 }
 
@@ -74,17 +75,21 @@ if ($Codex -and $Claude) {
   Exit-UsageError -Message 'choose only one of -Codex or -Claude'
 }
 
-if (($Codex -or $Claude) -and ($SrcDir -or $DstDir)) {
-  Exit-UsageError -Message 'do not combine -Codex/-Claude with <srcdir> <dstdir>'
+if (($Codex -or $Claude) -and $DstDir) {
+  Exit-UsageError -Message 'do not provide <dstdir> when using -Codex/-Claude (optional [srcdir] only)'
 }
 
 $SourceRoot = $SrcDir
 $DestRoot = $DstDir
 if ($Codex) {
-  $SourceRoot = Join-Path $ScriptDir 'codex'
+  if (-not $SourceRoot) {
+    $SourceRoot = Join-Path $ScriptDir 'codex'
+  }
   $DestRoot = Join-Path $HomeDir '.codex'
 } elseif ($Claude) {
-  $SourceRoot = Join-Path $ScriptDir 'claude'
+  if (-not $SourceRoot) {
+    $SourceRoot = Join-Path $ScriptDir 'claude'
+  }
   $DestRoot = Join-Path $HomeDir '.claude'
 } else {
   if (-not $SourceRoot -or -not $DestRoot) {
