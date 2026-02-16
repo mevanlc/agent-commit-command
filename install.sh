@@ -23,15 +23,16 @@ COMMIT_TOOL_SRC="${SCRIPT_DIR}/commit-tool"
 INSTALL_HOOKS=0
 UPGRADE_SH=0
 UPGRADE_MD=0
+CHECK_ONLY=0
 MODE=""
 POSITIONAL=()
 
 usage() {
   cat <<'EOF'
 Usage:
-  ./install.sh --codex [--hooks] [--sh-update] [--md-update] [srcdir]
-  ./install.sh --claude [--hooks] [--sh-update] [--md-update] [srcdir]
-  ./install.sh <srcdir> <dstdir> [--hooks] [--sh-update] [--md-update]
+  ./install.sh --codex [--hooks] [--sh-update] [--md-update] [--check] [srcdir]
+  ./install.sh --claude [--hooks] [--sh-update] [--md-update] [--check] [srcdir]
+  ./install.sh <srcdir> <dstdir> [--hooks] [--sh-update] [--md-update] [--check]
 
 Examples:
   ./install.sh --codex --sh-update --md-update
@@ -48,6 +49,7 @@ while [[ $# -gt 0 ]]; do
     --hooks) INSTALL_HOOKS=1; shift ;;
     --sh-update) UPGRADE_SH=1; shift ;;
     --md-update) UPGRADE_MD=1; shift ;;
+    --check) CHECK_ONLY=1; shift ;;
     -h|--help) usage; exit 0 ;;
     --) shift; POSITIONAL+=("$@"); break ;;
     -*)
@@ -108,6 +110,64 @@ fi
 DEST_COMMANDS="${DEST_ROOT}/${DEST_SUBDIR}"
 DEST_TOOL="${DEST_COMMANDS}/commit-tool"
 
+can_overwrite() {
+  local file="$1"
+  case "$file" in
+    *.sh) [[ "$UPGRADE_SH" == "1" ]] && echo 1 || echo 0 ;;
+    *.md) [[ "$UPGRADE_MD" == "1" ]] && echo 1 || echo 0 ;;
+    *.config) echo 0 ;; # Never overwrite config files
+    *) echo 0 ;;
+  esac
+}
+
+rel_from_dest_root() {
+  local dest="$1"
+  local prefix="${DEST_ROOT%/}/"
+  if [[ "$dest" == "$prefix"* ]]; then
+    echo "${dest#"$prefix"}"
+  else
+    echo "$dest"
+  fi
+}
+
+check_file() {
+  local src="$1"
+  local dest="$2"
+  local can_ow="$3"
+
+  local rel
+  rel="$(rel_from_dest_root "$dest")"
+
+  if [[ ! -e "$dest" ]]; then
+    printf 'MISSING\t%s\tinstall\n' "$rel"
+    CHECK_MISSING=$((CHECK_MISSING + 1))
+    return 0
+  fi
+
+  if cmp -s "$src" "$dest"; then
+    printf 'SAME\t%s\tskip\n' "$rel"
+    CHECK_SAME=$((CHECK_SAME + 1))
+    return 0
+  fi
+
+  if [[ "$can_ow" == "1" ]]; then
+    printf 'DIFF\t%s\toverwrite\n' "$rel"
+    CHECK_DIFF_OVERWRITE=$((CHECK_DIFF_OVERWRITE + 1))
+    return 0
+  fi
+
+  if [[ "$dest" == *.config ]]; then
+    printf 'DIFF\t%s\tskip (config never overwritten)\n' "$rel"
+  elif [[ "$dest" == *.sh ]]; then
+    printf 'DIFF\t%s\tskip (needs --sh-update)\n' "$rel"
+  elif [[ "$dest" == *.md ]]; then
+    printf 'DIFF\t%s\tskip (needs --md-update)\n' "$rel"
+  else
+    printf 'DIFF\t%s\tskip\n' "$rel"
+  fi
+  CHECK_DIFF_SKIP=$((CHECK_DIFF_SKIP + 1))
+}
+
 if [[ ! -d "$SRC_COMMANDS" ]]; then
   echo "Missing expected source directory: $SRC_COMMANDS" >&2
   exit 1
@@ -119,6 +179,42 @@ fi
 if [[ ! -f "${COMMIT_TOOL_SRC}/commit-tool.config" ]]; then
   echo "Missing expected file: ${COMMIT_TOOL_SRC}/commit-tool.config" >&2
   exit 1
+fi
+
+if [[ "$CHECK_ONLY" == "1" ]]; then
+  echo "Destination root: ${DEST_ROOT}"
+  echo "Destination dir:  ${DEST_COMMANDS}"
+  echo ""
+  echo -e "Status\tPath\tAction"
+
+  CHECK_SAME=0
+  CHECK_MISSING=0
+  CHECK_DIFF_OVERWRITE=0
+  CHECK_DIFF_SKIP=0
+
+  # Slash command markdown files
+  for md in "${SRC_COMMANDS}"/*.md; do
+    [[ -f "$md" ]] || continue
+    dest="${DEST_COMMANDS}/$(basename "$md")"
+    check_file "$md" "$dest" "$(can_overwrite "$md")"
+  done
+
+  # Commit tool
+  check_file "${COMMIT_TOOL_SRC}/commit-tool.sh" "${DEST_TOOL}/commit-tool.sh" "$(can_overwrite "commit-tool.sh")"
+  check_file "${COMMIT_TOOL_SRC}/commit-tool.config" "${DEST_TOOL}/commit-tool.config" "$(can_overwrite "commit-tool.config")"
+
+  # Hooks (optional)
+  if [[ "$INSTALL_HOOKS" == "1" ]]; then
+    for hook in "${COMMIT_TOOL_SRC}"/hook-*.sh "${COMMIT_TOOL_SRC}"/hook-*.config; do
+      [[ -f "$hook" ]] || continue
+      dest="${DEST_TOOL}/$(basename "$hook")"
+      check_file "$hook" "$dest" "$(can_overwrite "$hook")"
+    done
+  fi
+
+  echo ""
+  echo "Summary: ${CHECK_SAME} same, ${CHECK_MISSING} missing, ${CHECK_DIFF_OVERWRITE} diff(overwrite), ${CHECK_DIFF_SKIP} diff(skip)"
+  exit 0
 fi
 
 mkdir -p "$DEST_COMMANDS"
@@ -143,16 +239,6 @@ copy_file() {
     cp "$src" "$dest"
     INSTALLED+=("$dest")
   fi
-}
-
-can_overwrite() {
-  local file="$1"
-  case "$file" in
-    *.sh) [[ "$UPGRADE_SH" == "1" ]] && echo 1 || echo 0 ;;
-    *.md) [[ "$UPGRADE_MD" == "1" ]] && echo 1 || echo 0 ;;
-    *.config) echo 0 ;; # Never overwrite config files
-    *) echo 0 ;;
-  esac
 }
 
 for md in "${SRC_COMMANDS}"/*.md; do
