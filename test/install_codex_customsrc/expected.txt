@@ -1,3 +1,7 @@
-./prompts/commit-tool/commit-tool.config
-./prompts/commit-tool/commit-tool.sh
-./prompts/custom.md
+=== .codex ===
+./prompts/commit.md -> codex/commands/commit.md
+./prompts/gdf-commit.md -> codex/commands/gdf-commit.md
+=== .config ===
+./commit-tool.config
+./hooks/hook-preflight-01-id-check.config
+LINK: ./hooks/hook-preflight-01-id-check.sh -> commit-tool/hooks-available/hook-preflight-01-id-check.sh

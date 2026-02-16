@@ -6,5 +6,6 @@ TARGET="${1:-${CASE_DIR}/actual.txt}"
 if [[ "$TARGET" != /* ]]; then
   TARGET="${CASE_DIR}/${TARGET}"
 fi
+source "${PROJECT_DIR}/test/setup_config.sh"
 cd "${CASE_DIR}/repo"
 "${PROJECT_DIR}/commit-tool/commit-tool.sh" git --all 2>&1 | "${PROJECT_DIR}/test/normalize.sh" > "$TARGET"

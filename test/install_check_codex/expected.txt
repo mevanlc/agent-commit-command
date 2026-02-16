@@ -1,10 +1,10 @@
-Destination root: /CHECKED/HOME/.codex
-Destination dir:  /CHECKED/HOME/.codex/prompts
+=== Dry Run ===
 
-Status\tPath\tAction
-SAME\tprompts/commit.md\tskip
-MISSING\tprompts/gdf-commit.md\tinstall
-DIFF\tprompts/commit-tool/commit-tool.sh\toverwrite
-SAME\tprompts/commit-tool/commit-tool.config\tskip
+  CREATE  /HOME/.local/share/agent-commit-command  (symlink -> /REPO)
+  SEED  /HOME/.config/agent-commit-command/commit-tool.config  (from /REPO/defaults/commit-tool.config)
+  CREATE  /HOME/.config/agent-commit-command/hooks/hook-preflight-01-id-check.sh  (symlink -> /REPO/commit-tool/hooks-available/hook-preflight-01-id-check.sh)
+  SEED  /HOME/.config/agent-commit-command/hooks/hook-preflight-01-id-check.config  (from /REPO/defaults/hooks/hook-preflight-01-id-check.config)
+  CREATE  /HOME/.codex/prompts/commit.md  (symlink -> /REPO/codex/commands/commit.md)
+  CREATE  /HOME/.codex/prompts/gdf-commit.md  (symlink -> /REPO/codex/commands/gdf-commit.md)
 
-Summary: 2 same, 1 missing, 1 diff(overwrite), 0 diff(skip)
+Run without --check to apply these changes.

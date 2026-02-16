@@ -1,280 +1,252 @@
 #!/usr/bin/env bash
-# install.sh - Install slash commands + commit-tool
+# install.sh - Install agent-commit-command
+#
+# Installs shared code to ~/.local/share/agent-commit-command/ (or creates
+# a symlink there pointing to this repo), seeds default configs to
+# ~/.config/agent-commit-command/, and symlinks slash-command .md files
+# into the appropriate CLI directories.
 #
 # Usage:
-#   ./install.sh --codex [options]
-#   ./install.sh --claude [options]
-#   ./install.sh <srcdir> <dstdir> [options]
+#   ./install.sh [--codex] [--claude] [--hooks] [--check]
 #
-# Where:
-#   srcdir: repo subdir containing ./commands (e.g. ./codex or ./claude)
-#   dstdir: base config dir (e.g. ~/.codex/ or ~/.claude/)
+# At least one of --codex or --claude is required (both may be given).
 #
 # Options:
-#   --hooks      Also install hook-*.{sh,config} files
-#   --sh-update  Overwrite existing .sh files (not .config)
-#   --md-update  Overwrite existing .md files (not .config)
+#   --codex    Symlink slash-command .md files into ~/.codex/prompts/
+#   --claude   Symlink slash-command .md files into ~/.claude/commands/
+#   --hooks    Also set up hooks in the config directory
+#   --check    Dry-run: show what would be installed without making changes
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMIT_TOOL_SRC="${SCRIPT_DIR}/commit-tool"
 
+CODE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/agent-commit-command"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/agent-commit-command"
+
+INSTALL_CODEX=0
+INSTALL_CLAUDE=0
 INSTALL_HOOKS=0
-UPGRADE_SH=0
-UPGRADE_MD=0
 CHECK_ONLY=0
-MODE=""
-POSITIONAL=()
 
 usage() {
   cat <<'EOF'
 Usage:
-  ./install.sh --codex [--hooks] [--sh-update] [--md-update] [--check] [srcdir]
-  ./install.sh --claude [--hooks] [--sh-update] [--md-update] [--check] [srcdir]
-  ./install.sh <srcdir> <dstdir> [--hooks] [--sh-update] [--md-update] [--check]
+  ./install.sh --codex [--hooks] [--check]
+  ./install.sh --claude [--hooks] [--check]
+  ./install.sh --codex --claude [--hooks] [--check]
+
+Options:
+  --codex    Symlink .md slash commands into ~/.codex/prompts/
+  --claude   Symlink .md slash commands into ~/.claude/commands/
+  --hooks    Also set up preflight hooks in the config directory
+  --check    Dry-run: show what would happen without making changes
+
+Paths:
+  Code:   ~/.local/share/agent-commit-command/  (symlink to repo)
+  Config: ~/.config/agent-commit-command/        (seeded defaults)
 
 Examples:
-  ./install.sh --codex --sh-update --md-update
-  ./install.sh --claude --hooks
-  ./install.sh --codex ./codex --sh-update --md-update
-  ./install.sh ./codex ~/.codex/ --sh-update --md-update
+  ./install.sh --codex --claude --hooks
+  ./install.sh --claude --check
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --codex) MODE="codex"; shift ;;
-    --claude) MODE="claude"; shift ;;
+    --codex) INSTALL_CODEX=1; shift ;;
+    --claude) INSTALL_CLAUDE=1; shift ;;
     --hooks) INSTALL_HOOKS=1; shift ;;
-    --sh-update) UPGRADE_SH=1; shift ;;
-    --md-update) UPGRADE_MD=1; shift ;;
     --check) CHECK_ONLY=1; shift ;;
     -h|--help) usage; exit 0 ;;
-    --) shift; POSITIONAL+=("$@"); break ;;
-    -*)
-      echo "Unknown option: $1" >&2
-      exit 1
-      ;;
     *)
-      POSITIONAL+=("$1")
-      shift
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
       ;;
   esac
 done
 
-if [[ -n "$MODE" && ${#POSITIONAL[@]} -gt 1 ]]; then
-  echo "Error: --${MODE} mode optionally takes [srcdir] (no <dstdir>)" >&2
+if [[ "$INSTALL_CODEX" == "0" && "$INSTALL_CLAUDE" == "0" ]]; then
+  echo "Error: at least one of --codex or --claude is required" >&2
   usage >&2
   exit 1
 fi
 
-SRCDIR=""
-DSTDIR=""
-if [[ "$MODE" == "codex" ]]; then
-  if [[ ${#POSITIONAL[@]} -eq 1 ]]; then
-    SRCDIR="${POSITIONAL[0]}"
-  else
-    SRCDIR="${SCRIPT_DIR}/codex"
-  fi
-  DSTDIR="${HOME}/.codex"
-elif [[ "$MODE" == "claude" ]]; then
-  if [[ ${#POSITIONAL[@]} -eq 1 ]]; then
-    SRCDIR="${POSITIONAL[0]}"
-  else
-    SRCDIR="${SCRIPT_DIR}/claude"
-  fi
-  DSTDIR="${HOME}/.claude"
-else
-  if [[ ${#POSITIONAL[@]} -ne 2 ]]; then
-    echo "Error: expected <srcdir> <dstdir> or --codex/--claude" >&2
-    usage >&2
-    exit 1
-  fi
-  SRCDIR="${POSITIONAL[0]}"
-  DSTDIR="${POSITIONAL[1]}"
-fi
+# === VALIDATION ===
 
-# Expand leading ~ if present (e.g. when quoted).
-SRCDIR="${SRCDIR/#\~/$HOME}"
-DSTDIR="${DSTDIR/#\~/$HOME}"
-
-SRC_COMMANDS="${SRCDIR%/}/commands"
-DEST_ROOT="${DSTDIR%/}"
-DEST_SUBDIR="commands"
-# Codex stores slash commands in ~/.codex/prompts/.
-# When installing to Codex, put both the .md prompts and commit-tool under prompts/.
-if [[ "$MODE" == "codex" || "$(basename "${DEST_ROOT}")" == ".codex" || "$(basename "${SRCDIR%/}")" == "codex" ]]; then
-  DEST_SUBDIR="prompts"
-fi
-DEST_COMMANDS="${DEST_ROOT}/${DEST_SUBDIR}"
-DEST_TOOL="${DEST_COMMANDS}/commit-tool"
-
-can_overwrite() {
-  local file="$1"
-  case "$file" in
-    *.sh) [[ "$UPGRADE_SH" == "1" ]] && echo 1 || echo 0 ;;
-    *.md) [[ "$UPGRADE_MD" == "1" ]] && echo 1 || echo 0 ;;
-    *.config) echo 0 ;; # Never overwrite config files
-    *) echo 0 ;;
-  esac
-}
-
-rel_from_dest_root() {
-  local dest="$1"
-  local prefix="${DEST_ROOT%/}/"
-  if [[ "$dest" == "$prefix"* ]]; then
-    echo "${dest#"$prefix"}"
-  else
-    echo "$dest"
-  fi
-}
-
-check_file() {
-  local src="$1"
-  local dest="$2"
-  local can_ow="$3"
-
-  local rel
-  rel="$(rel_from_dest_root "$dest")"
-
-  if [[ ! -e "$dest" ]]; then
-    printf 'MISSING\t%s\tinstall\n' "$rel"
-    CHECK_MISSING=$((CHECK_MISSING + 1))
-    return 0
-  fi
-
-  if cmp -s "$src" "$dest"; then
-    printf 'SAME\t%s\tskip\n' "$rel"
-    CHECK_SAME=$((CHECK_SAME + 1))
-    return 0
-  fi
-
-  if [[ "$can_ow" == "1" ]]; then
-    printf 'DIFF\t%s\toverwrite\n' "$rel"
-    CHECK_DIFF_OVERWRITE=$((CHECK_DIFF_OVERWRITE + 1))
-    return 0
-  fi
-
-  if [[ "$dest" == *.config ]]; then
-    printf 'DIFF\t%s\tskip (config never overwritten)\n' "$rel"
-  elif [[ "$dest" == *.sh ]]; then
-    printf 'DIFF\t%s\tskip (needs --sh-update)\n' "$rel"
-  elif [[ "$dest" == *.md ]]; then
-    printf 'DIFF\t%s\tskip (needs --md-update)\n' "$rel"
-  else
-    printf 'DIFF\t%s\tskip\n' "$rel"
-  fi
-  CHECK_DIFF_SKIP=$((CHECK_DIFF_SKIP + 1))
-}
-
-if [[ ! -d "$SRC_COMMANDS" ]]; then
-  echo "Missing expected source directory: $SRC_COMMANDS" >&2
-  exit 1
-fi
-if [[ ! -f "${COMMIT_TOOL_SRC}/commit-tool.sh" ]]; then
-  echo "Missing expected file: ${COMMIT_TOOL_SRC}/commit-tool.sh" >&2
-  exit 1
-fi
-if [[ ! -f "${COMMIT_TOOL_SRC}/commit-tool.config" ]]; then
-  echo "Missing expected file: ${COMMIT_TOOL_SRC}/commit-tool.config" >&2
+if [[ ! -f "${SCRIPT_DIR}/commit-tool/commit-tool.sh" ]]; then
+  echo "Error: missing commit-tool/commit-tool.sh in repo" >&2
   exit 1
 fi
 
-if [[ "$CHECK_ONLY" == "1" ]]; then
-  echo "Destination root: ${DEST_ROOT}"
-  echo "Destination dir:  ${DEST_COMMANDS}"
-  echo ""
-  echo -e "Status\tPath\tAction"
+# === HELPERS ===
 
-  CHECK_SAME=0
-  CHECK_MISSING=0
-  CHECK_DIFF_OVERWRITE=0
-  CHECK_DIFF_SKIP=0
+ACTIONS=()
 
-  # Slash command markdown files
-  for md in "${SRC_COMMANDS}"/*.md; do
-    [[ -f "$md" ]] || continue
-    dest="${DEST_COMMANDS}/$(basename "$md")"
-    check_file "$md" "$dest" "$(can_overwrite "$md")"
-  done
-
-  # Commit tool
-  check_file "${COMMIT_TOOL_SRC}/commit-tool.sh" "${DEST_TOOL}/commit-tool.sh" "$(can_overwrite "commit-tool.sh")"
-  check_file "${COMMIT_TOOL_SRC}/commit-tool.config" "${DEST_TOOL}/commit-tool.config" "$(can_overwrite "commit-tool.config")"
-
-  # Hooks (optional)
-  if [[ "$INSTALL_HOOKS" == "1" ]]; then
-    for hook in "${COMMIT_TOOL_SRC}"/hook-*.sh "${COMMIT_TOOL_SRC}"/hook-*.config; do
-      [[ -f "$hook" ]] || continue
-      dest="${DEST_TOOL}/$(basename "$hook")"
-      check_file "$hook" "$dest" "$(can_overwrite "$hook")"
-    done
+log_action() {
+  local action="$1" target="$2" detail="${3:-}"
+  if [[ -n "$detail" ]]; then
+    ACTIONS+=("${action}  ${target}  (${detail})")
+  else
+    ACTIONS+=("${action}  ${target}")
   fi
+}
 
-  echo ""
-  echo "Summary: ${CHECK_SAME} same, ${CHECK_MISSING} missing, ${CHECK_DIFF_OVERWRITE} diff(overwrite), ${CHECK_DIFF_SKIP} diff(skip)"
-  exit 0
-fi
+ensure_symlink() {
+  local link_path="$1" target="$2"
 
-mkdir -p "$DEST_COMMANDS"
-mkdir -p "$DEST_TOOL"
+  if [[ -L "$link_path" ]]; then
+    local current
+    current="$(readlink "$link_path")"
+    if [[ "$current" == "$target" ]]; then
+      log_action "OK" "$link_path" "symlink correct"
+      return 0
+    fi
+    if [[ "$CHECK_ONLY" == "1" ]]; then
+      log_action "UPDATE" "$link_path" "symlink -> $target"
+      return 0
+    fi
+    rm "$link_path"
+    ln -s "$target" "$link_path"
+    log_action "UPDATE" "$link_path" "symlink -> $target"
+  elif [[ -e "$link_path" ]]; then
+    log_action "SKIP" "$link_path" "exists as regular file; remove manually to switch to symlink"
+  else
+    if [[ "$CHECK_ONLY" == "1" ]]; then
+      log_action "CREATE" "$link_path" "symlink -> $target"
+      return 0
+    fi
+    ln -s "$target" "$link_path"
+    log_action "CREATE" "$link_path" "symlink -> $target"
+  fi
+}
 
-INSTALLED=()
-SKIPPED=()
-
-copy_file() {
-  local src="$1"
-  local dest="$2"
-  local can_overwrite="$3"
+seed_config() {
+  local src="$1" dest="$2"
 
   if [[ -e "$dest" ]]; then
-    if [[ "$can_overwrite" == "1" ]]; then
-      cp "$src" "$dest"
-      INSTALLED+=("$dest (overwritten)")
+    if cmp -s "$src" "$dest"; then
+      log_action "OK" "$dest" "config unchanged"
     else
-      SKIPPED+=("$dest (exists)")
+      log_action "SKIP" "$dest" "config exists, not overwriting"
     fi
-  else
-    cp "$src" "$dest"
-    INSTALLED+=("$dest")
+    return 0
   fi
+
+  if [[ "$CHECK_ONLY" == "1" ]]; then
+    log_action "SEED" "$dest" "from $src"
+    return 0
+  fi
+
+  cp "$src" "$dest"
+  log_action "SEED" "$dest" "default config"
 }
 
-for md in "${SRC_COMMANDS}"/*.md; do
-  [[ -f "$md" ]] || continue
-  dest="${DEST_COMMANDS}/$(basename "$md")"
-  copy_file "$md" "$dest" "$(can_overwrite "$md")"
-done
+# === CODE_DIR: ensure ~/.local/share/agent-commit-command points to this repo ===
 
-copy_file "${COMMIT_TOOL_SRC}/commit-tool.sh" "${DEST_TOOL}/commit-tool.sh" "$(can_overwrite "commit-tool.sh")"
-copy_file "${COMMIT_TOOL_SRC}/commit-tool.config" "${DEST_TOOL}/commit-tool.config" "$(can_overwrite "commit-tool.config")"
+SCRIPT_REAL="$(cd "$SCRIPT_DIR" && pwd -P)"
+CODE_REAL=""
+if [[ -e "$CODE_DIR" ]]; then
+  CODE_REAL="$(cd "$CODE_DIR" && pwd -P 2>/dev/null || true)"
+fi
 
-chmod +x "${DEST_TOOL}/commit-tool.sh" 2>/dev/null || true
+if [[ "$SCRIPT_REAL" == "$CODE_REAL" ]]; then
+  log_action "OK" "$CODE_DIR" "already points to repo"
+elif [[ -L "$CODE_DIR" ]]; then
+  # Symlink exists but points elsewhere
+  if [[ "$CHECK_ONLY" == "1" ]]; then
+    log_action "UPDATE" "$CODE_DIR" "symlink -> $SCRIPT_DIR"
+  else
+    rm "$CODE_DIR"
+    ln -s "$SCRIPT_DIR" "$CODE_DIR"
+    log_action "UPDATE" "$CODE_DIR" "symlink -> $SCRIPT_DIR"
+  fi
+elif [[ -e "$CODE_DIR" ]]; then
+  echo "Error: $CODE_DIR exists but is not this repo and not a symlink." >&2
+  echo "Remove it manually or clone this repo directly to $CODE_DIR" >&2
+  exit 1
+else
+  if [[ "$CHECK_ONLY" == "1" ]]; then
+    log_action "CREATE" "$CODE_DIR" "symlink -> $SCRIPT_DIR"
+  else
+    mkdir -p "$(dirname "$CODE_DIR")"
+    ln -s "$SCRIPT_DIR" "$CODE_DIR"
+    log_action "CREATE" "$CODE_DIR" "symlink -> $SCRIPT_DIR"
+  fi
+fi
+
+# === CONFIG_DIR: seed default configs ===
+
+if [[ "$CHECK_ONLY" == "0" ]]; then
+  mkdir -p "$CONFIG_DIR"
+fi
+
+seed_config "${SCRIPT_DIR}/defaults/commit-tool.config" "${CONFIG_DIR}/commit-tool.config"
+
+# === HOOKS ===
 
 if [[ "$INSTALL_HOOKS" == "1" ]]; then
-  for hook in "${COMMIT_TOOL_SRC}"/hook-*.sh "${COMMIT_TOOL_SRC}"/hook-*.config; do
-    [[ -f "$hook" ]] || continue
-    dest="${DEST_TOOL}/$(basename "$hook")"
-    copy_file "$hook" "$dest" "$(can_overwrite "$hook")"
-    [[ "$hook" == *.sh ]] && chmod +x "$dest" 2>/dev/null || true
+  if [[ "$CHECK_ONLY" == "0" ]]; then
+    mkdir -p "${CONFIG_DIR}/hooks"
+  fi
+
+  # Symlink hook scripts from hooks-available/ into config hooks/
+  for hook_sh in "${SCRIPT_DIR}/commit-tool/hooks-available"/hook-*.sh; do
+    [[ -f "$hook_sh" ]] || continue
+    local_name="$(basename "$hook_sh")"
+    ensure_symlink "${CONFIG_DIR}/hooks/${local_name}" "$hook_sh"
+
+    # Seed default hook config if available
+    config_name="${local_name%.sh}.config"
+    if [[ -f "${SCRIPT_DIR}/defaults/hooks/${config_name}" ]]; then
+      seed_config "${SCRIPT_DIR}/defaults/hooks/${config_name}" "${CONFIG_DIR}/hooks/${config_name}"
+    fi
   done
 fi
 
-echo "Installation complete."
+# === CODEX .md SYMLINKS ===
+
+if [[ "$INSTALL_CODEX" == "1" ]]; then
+  CODEX_DIR="${HOME}/.codex/prompts"
+  if [[ "$CHECK_ONLY" == "0" ]]; then
+    mkdir -p "$CODEX_DIR"
+  fi
+
+  for md in "${SCRIPT_DIR}/codex/commands"/*.md; do
+    [[ -f "$md" ]] || continue
+    ensure_symlink "${CODEX_DIR}/$(basename "$md")" "$md"
+  done
+fi
+
+# === CLAUDE .md SYMLINKS ===
+
+if [[ "$INSTALL_CLAUDE" == "1" ]]; then
+  CLAUDE_DIR="${HOME}/.claude/commands"
+  if [[ "$CHECK_ONLY" == "0" ]]; then
+    mkdir -p "$CLAUDE_DIR"
+  fi
+
+  for md in "${SCRIPT_DIR}/claude/commands"/*.md; do
+    [[ -f "$md" ]] || continue
+    ensure_symlink "${CLAUDE_DIR}/$(basename "$md")" "$md"
+  done
+fi
+
+# === SUMMARY ===
+
+if [[ "$CHECK_ONLY" == "1" ]]; then
+  echo "=== Dry Run ==="
+else
+  echo "=== Installation Complete ==="
+fi
+
+echo ""
+for action in "${ACTIONS[@]}"; do
+  echo "  $action"
+done
 echo ""
 
-if [[ ${#INSTALLED[@]} -gt 0 ]]; then
-  echo "Installed:"
-  for f in "${INSTALLED[@]}"; do
-    echo "  $f"
-  done
-fi
-
-if [[ ${#SKIPPED[@]} -gt 0 ]]; then
-  echo ""
-  echo "Skipped (use --sh-update or --md-update to overwrite):"
-  for f in "${SKIPPED[@]}"; do
-    echo "  $f"
-  done
+if [[ "$CHECK_ONLY" == "1" ]]; then
+  echo "Run without --check to apply these changes."
 fi

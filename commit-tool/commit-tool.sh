@@ -37,7 +37,8 @@ if [[ "${1:-}" == "--write-config" ]]; then
 # Show most recent N commits for style reference (0 to disable)
 report_recent_commits=5
 
-# Note: Identity checking has moved to commit-tool/hook-preflight/01-id-check.config
+# Note: Identity checking is configured in hooks/hook-preflight-01-id-check.config
+# (located in the same config directory as this file)
 CONFIGEOF
   echo "Created $TARGET"
   exit 0
@@ -98,7 +99,8 @@ esac
 # === LOAD CONFIG ===
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/commit-tool.config"
+CONFIG_DIR="${AGENT_COMMIT_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/agent-commit-command}"
+CONFIG_FILE="${CONFIG_DIR}/commit-tool.config"
 
 # Defaults
 REPORT_RECENT_COMMITS=10
@@ -124,7 +126,7 @@ fi
 
 run_hooks_for() {
   local stage="$1"
-  local pattern="${SCRIPT_DIR}/hook-${stage}-*.sh"
+  local pattern="${CONFIG_DIR}/hooks/hook-${stage}-*.sh"
 
   # Find hooks matching pattern (e.g., hook-preflight-01-id-check.sh)
   local hooks=()

@@ -35,7 +35,7 @@ if [[ ! -f "${CASE_DIR}/expected.txt" ]]; then
 fi
 
 # Clean up
-rm -rf "${CASE_DIR}/repo" "${CASE_DIR}/actual.txt"
+rm -rf "${CASE_DIR}/repo" "${CASE_DIR}/actual.txt" "${CASE_DIR}/config"
 
 # Generate repo
 if ! "${CASE_DIR}/gen_repo.sh" "${CASE_DIR}/repo" 2>/dev/null; then
