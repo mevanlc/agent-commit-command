@@ -45,8 +45,8 @@ while [[ $# -gt 0 ]]; do
     --codex) MODE="codex"; shift ;;
     --claude) MODE="claude"; shift ;;
     --hooks) INSTALL_HOOKS=1; shift ;;
-    --sh-update|--upgrade-sh) UPGRADE_SH=1; shift ;;
-    --md-update|--upgrade-md) UPGRADE_MD=1; shift ;;
+    --sh-update) UPGRADE_SH=1; shift ;;
+    --md-update) UPGRADE_MD=1; shift ;;
     -h|--help) usage; exit 0 ;;
     --) shift; POSITIONAL+=("$@"); break ;;
     -*)
