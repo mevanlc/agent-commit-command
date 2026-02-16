@@ -15,9 +15,7 @@ param(
   [switch]$Codex,
   [switch]$Claude,
   [switch]$Hooks,
-  [Alias('UpgradeSh')]
   [switch]$SHUpdate,
-  [Alias('UpgradeMd')]
   [switch]$MDUpdate,
   [Alias('h')]
   [switch]$Help,
