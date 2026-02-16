@@ -2,9 +2,9 @@
 # install.ps1 - Install slash commands + commit-tool
 #
 # Usage:
-#   ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate] [srcdir]
-#   ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate] [srcdir]
-#   ./install.ps1 <srcdir> <dstdir> [-Hooks] [-SHUpdate] [-MDUpdate]
+#   ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate] [-Check] [srcdir]
+#   ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate] [-Check] [srcdir]
+#   ./install.ps1 <srcdir> <dstdir> [-Hooks] [-SHUpdate] [-MDUpdate] [-Check]
 #
 # Where:
 #   srcdir: repo subdir containing ./commands (e.g. ./codex or ./claude)
@@ -17,6 +17,7 @@ param(
   [switch]$Hooks,
   [switch]$SHUpdate,
   [switch]$MDUpdate,
+  [switch]$Check,
   [Alias('h')]
   [switch]$Help,
   [Parameter(Position = 0)]
@@ -32,9 +33,9 @@ $ErrorActionPreference = 'Stop'
 
 function Write-Usage {
   Write-Host 'Usage:'
-  Write-Host '  ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate] [srcdir]'
-  Write-Host '  ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate] [srcdir]'
-  Write-Host '  ./install.ps1 <srcdir> <dstdir> [-Hooks] [-SHUpdate] [-MDUpdate]'
+  Write-Host '  ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate] [-Check] [srcdir]'
+  Write-Host '  ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate] [-Check] [srcdir]'
+  Write-Host '  ./install.ps1 <srcdir> <dstdir> [-Hooks] [-SHUpdate] [-MDUpdate] [-Check]'
   Write-Host ''
   Write-Host 'Note: PowerShell uses single-dash switches. Use ./install.sh for --long-options.'
   Write-Host ''
@@ -42,6 +43,7 @@ function Write-Usage {
   Write-Host '  ./install.ps1 -Codex -SHUpdate -MDUpdate'
   Write-Host '  ./install.ps1 -Claude -Hooks'
   Write-Host '  ./install.ps1 -Codex ./codex -SHUpdate -MDUpdate'
+  Write-Host '  ./install.ps1 -Codex -Check'
   Write-Host '  ./install.ps1 ./codex ~/.codex/ -SHUpdate -MDUpdate'
 }
 
@@ -117,11 +119,30 @@ $destSubdir =
 
 $DestCommands = Join-Path $DestRoot $destSubdir
 $DestTool = Join-Path $DestCommands 'commit-tool'
-New-Item -ItemType Directory -Force -Path $DestCommands | Out-Null
-New-Item -ItemType Directory -Force -Path $DestTool | Out-Null
 
 $Installed = New-Object System.Collections.Generic.List[string]
 $Skipped = New-Object System.Collections.Generic.List[string]
+
+function Get-RelFromDestRoot {
+  param([Parameter(Mandatory = $true)][string]$Destination)
+  $root = $DestRoot.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+  if (-not $root) { return $Destination }
+  if ($Destination.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) {
+    return $Destination.Substring($root.Length).TrimStart([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+  }
+  return $Destination
+}
+
+function Test-FilesSame {
+  param(
+    [Parameter(Mandatory = $true)][string]$Source,
+    [Parameter(Mandatory = $true)][string]$Destination
+  )
+  if (-not (Test-Path -LiteralPath $Destination)) { return $false }
+  $srcHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash
+  $dstHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
+  return ($srcHash -eq $dstHash)
+}
 
 function Get-CanOverwrite {
   param([Parameter(Mandatory = $true)][string]$PathOrName)
@@ -133,6 +154,90 @@ function Get-CanOverwrite {
     default { return $false }
   }
 }
+
+function Write-CheckLine {
+  param(
+    [Parameter(Mandatory = $true)][string]$Source,
+    [Parameter(Mandatory = $true)][string]$Destination,
+    [Parameter(Mandatory = $true)][bool]$CanOverwrite
+  )
+
+  $rel = Get-RelFromDestRoot -Destination $Destination
+
+  if (-not (Test-Path -LiteralPath $Destination)) {
+    Write-Host ("MISSING`t{0}`tinstall" -f $rel)
+    $script:CheckMissing += 1
+    return
+  }
+
+  if (Test-FilesSame -Source $Source -Destination $Destination) {
+    Write-Host ("SAME`t{0}`tskip" -f $rel)
+    $script:CheckSame += 1
+    return
+  }
+
+  if ($CanOverwrite) {
+    Write-Host ("DIFF`t{0}`toverwrite" -f $rel)
+    $script:CheckDiffOverwrite += 1
+    return
+  }
+
+  $ext = [IO.Path]::GetExtension($Destination).ToLowerInvariant()
+  if ($ext -eq '.config') {
+    Write-Host ("DIFF`t{0}`tskip (config never overwritten)" -f $rel)
+  } elseif ($ext -eq '.sh') {
+    Write-Host ("DIFF`t{0}`tskip (needs -SHUpdate)" -f $rel)
+  } elseif ($ext -eq '.md') {
+    Write-Host ("DIFF`t{0}`tskip (needs -MDUpdate)" -f $rel)
+  } else {
+    Write-Host ("DIFF`t{0}`tskip" -f $rel)
+  }
+  $script:CheckDiffSkip += 1
+}
+
+if ($Check) {
+  Write-Host ("Destination root: {0}" -f $DestRoot)
+  Write-Host ("Destination dir:  {0}" -f $DestCommands)
+  Write-Host ''
+  Write-Host "Status`tPath`tAction"
+
+  $script:CheckSame = 0
+  $script:CheckMissing = 0
+  $script:CheckDiffOverwrite = 0
+  $script:CheckDiffSkip = 0
+
+  Get-ChildItem -LiteralPath $SrcCommands -Filter '*.md' -File -ErrorAction Stop | Sort-Object Name | ForEach-Object {
+    $dest = Join-Path $DestCommands $_.Name
+    Write-CheckLine -Source $_.FullName -Destination $dest -CanOverwrite (Get-CanOverwrite -PathOrName $_.Name)
+  }
+
+  Write-CheckLine `
+    -Source (Join-Path $CommitToolSrc 'commit-tool.sh') `
+    -Destination (Join-Path $DestTool 'commit-tool.sh') `
+    -CanOverwrite (Get-CanOverwrite -PathOrName 'commit-tool.sh')
+
+  Write-CheckLine `
+    -Source (Join-Path $CommitToolSrc 'commit-tool.config') `
+    -Destination (Join-Path $DestTool 'commit-tool.config') `
+    -CanOverwrite (Get-CanOverwrite -PathOrName 'commit-tool.config')
+
+  if ($Hooks) {
+    Get-ChildItem -LiteralPath $CommitToolSrc -File -ErrorAction Stop |
+      Where-Object { $_.Name -like 'hook-*.sh' -or $_.Name -like 'hook-*.config' } |
+      Sort-Object Name |
+      ForEach-Object {
+        $dest = Join-Path $DestTool $_.Name
+        Write-CheckLine -Source $_.FullName -Destination $dest -CanOverwrite (Get-CanOverwrite -PathOrName $_.Name)
+      }
+  }
+
+  Write-Host ''
+  Write-Host ("Summary: {0} same, {1} missing, {2} diff(overwrite), {3} diff(skip)" -f $script:CheckSame, $script:CheckMissing, $script:CheckDiffOverwrite, $script:CheckDiffSkip)
+  exit 0
+}
+
+New-Item -ItemType Directory -Force -Path $DestCommands | Out-Null
+New-Item -ItemType Directory -Force -Path $DestTool | Out-Null
 
 function Copy-FileControlled {
   param(

@@ -1,0 +1,10 @@
+Destination root: /CHECKED/HOME/.codex
+Destination dir:  /CHECKED/HOME/.codex/prompts
+
+Status\tPath\tAction
+SAME\tprompts/commit.md\tskip
+MISSING\tprompts/gdf-commit.md\tinstall
+DIFF\tprompts/commit-tool/commit-tool.sh\toverwrite
+SAME\tprompts/commit-tool/commit-tool.config\tskip
+
+Summary: 2 same, 1 missing, 1 diff(overwrite), 0 diff(skip)
