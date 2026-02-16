@@ -14,7 +14,7 @@ If that path does not exist, tell the user to install/upgrade the tool into `~/.
 Recommended install (from this repo):
 
 ```sh
-./install.sh --codex --upgrade-sh --upgrade-md
+./install.sh --codex --sh-update --md-update
 ```
 
 Then follow the script’s output exactly:
