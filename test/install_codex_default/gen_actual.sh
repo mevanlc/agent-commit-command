@@ -9,6 +9,29 @@ mkdir -p "$HOME"
 
 "${PROJECT_DIR}/install.sh" --codex >/dev/null
 
-cd "${HOME}/.codex"
-find . -type f -print | LC_ALL=C sort > "$TARGET"
+# List what was created under .codex (should be symlinks to .md files)
+{
+  echo "=== .codex ==="
+  cd "${HOME}/.codex"
+  find . -type l -print | LC_ALL=C sort | while read -r link; do
+    target="$(readlink "$link")"
+    # Normalize: strip the project dir prefix for stable output
+    target="${target#"${PROJECT_DIR}/"}"
+    echo "${link} -> ${target}"
+  done
 
+  echo "=== .local/share ==="
+  if [[ -L "${HOME}/.local/share/agent-commit-command" ]]; then
+    target="$(readlink "${HOME}/.local/share/agent-commit-command")"
+    rel="${target#"${PROJECT_DIR}"}"
+    if [[ -n "$rel" ]]; then
+      echo "agent-commit-command -> ${rel}"
+    else
+      echo "agent-commit-command -> (repo root)"
+    fi
+  fi
+
+  echo "=== .config ==="
+  cd "${HOME}/.config/agent-commit-command"
+  find . -type f -print | LC_ALL=C sort
+} > "$TARGET"

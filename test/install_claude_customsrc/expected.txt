@@ -1,3 +1,5 @@
-./commands/commit-tool/commit-tool.config
-./commands/commit-tool/commit-tool.sh
-./commands/custom.md
+=== .claude ===
+./commands/commit.md -> claude/commands/commit.md
+./commands/gdf-commit.md -> claude/commands/gdf-commit.md
+=== .config ===
+./commit-tool.config

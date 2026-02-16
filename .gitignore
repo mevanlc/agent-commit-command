@@ -1,3 +1,4 @@
 # Generated test artifacts (per-case)
 test/*/repo/
 test/*/actual.txt
+test/*/config/

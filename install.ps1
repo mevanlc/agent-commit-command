@@ -1,29 +1,24 @@
 #!/usr/bin/env pwsh
-# install.ps1 - Install slash commands + commit-tool
+# install.ps1 - Install agent-commit-command
+#
+# Installs shared code to ~/.local/share/agent-commit-command/ (or creates
+# a symlink there pointing to this repo), seeds default configs to
+# ~/.config/agent-commit-command/, and symlinks slash-command .md files
+# into the appropriate CLI directories.
 #
 # Usage:
-#   ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate] [-Check] [srcdir]
-#   ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate] [-Check] [srcdir]
-#   ./install.ps1 <srcdir> <dstdir> [-Hooks] [-SHUpdate] [-MDUpdate] [-Check]
+#   ./install.ps1 [-Codex] [-Claude] [-Hooks] [-Check]
 #
-# Where:
-#   srcdir: repo subdir containing ./commands (e.g. ./codex or ./claude)
-#   dstdir: base config dir (e.g. ~/.codex/ or ~/.claude/)
+# At least one of -Codex or -Claude is required (both may be given).
 
 [CmdletBinding(PositionalBinding = $false)]
 param(
   [switch]$Codex,
   [switch]$Claude,
   [switch]$Hooks,
-  [switch]$SHUpdate,
-  [switch]$MDUpdate,
   [switch]$Check,
   [Alias('h')]
   [switch]$Help,
-  [Parameter(Position = 0)]
-  [string]$SrcDir,
-  [Parameter(Position = 1)]
-  [string]$DstDir,
   [Parameter(ValueFromRemainingArguments = $true)]
   [string[]]$RemainingArgs = @()
 )
@@ -33,26 +28,23 @@ $ErrorActionPreference = 'Stop'
 
 function Write-Usage {
   Write-Host 'Usage:'
-  Write-Host '  ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate] [-Check] [srcdir]'
-  Write-Host '  ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate] [-Check] [srcdir]'
-  Write-Host '  ./install.ps1 <srcdir> <dstdir> [-Hooks] [-SHUpdate] [-MDUpdate] [-Check]'
+  Write-Host '  ./install.ps1 -Codex [-Hooks] [-Check]'
+  Write-Host '  ./install.ps1 -Claude [-Hooks] [-Check]'
+  Write-Host '  ./install.ps1 -Codex -Claude [-Hooks] [-Check]'
   Write-Host ''
-  Write-Host 'Note: PowerShell uses single-dash switches. Use ./install.sh for --long-options.'
+  Write-Host 'Options:'
+  Write-Host '  -Codex    Symlink .md slash commands into ~/.codex/prompts/'
+  Write-Host '  -Claude   Symlink .md slash commands into ~/.claude/commands/'
+  Write-Host '  -Hooks    Also set up preflight hooks in the config directory'
+  Write-Host '  -Check    Dry-run: show what would happen without making changes'
+  Write-Host ''
+  Write-Host 'Paths:'
+  Write-Host '  Code:   ~/.local/share/agent-commit-command/  (symlink to repo)'
+  Write-Host '  Config: ~/.config/agent-commit-command/        (seeded defaults)'
   Write-Host ''
   Write-Host 'Examples:'
-  Write-Host '  ./install.ps1 -Codex -SHUpdate -MDUpdate'
-  Write-Host '  ./install.ps1 -Claude -Hooks'
-  Write-Host '  ./install.ps1 -Codex ./codex -SHUpdate -MDUpdate'
-  Write-Host '  ./install.ps1 -Codex -Check'
-  Write-Host '  ./install.ps1 ./codex ~/.codex/ -SHUpdate -MDUpdate'
-}
-
-function Exit-UsageError {
-  param([Parameter(Mandatory = $true)][string]$Message)
-  Write-Warning $Message
-  Write-Host ''
-  Write-Usage
-  exit 1
+  Write-Host '  ./install.ps1 -Codex -Claude -Hooks'
+  Write-Host '  ./install.ps1 -Claude -Check'
 }
 
 if ($Help) {
@@ -61,7 +53,17 @@ if ($Help) {
 }
 
 if ($RemainingArgs.Count -gt 0) {
-  Exit-UsageError -Message "Unknown option: $($RemainingArgs[0])"
+  Write-Warning "Unknown option: $($RemainingArgs[0])"
+  Write-Host ''
+  Write-Usage
+  exit 1
+}
+
+if (-not $Codex -and -not $Claude) {
+  Write-Warning 'At least one of -Codex or -Claude is required'
+  Write-Host ''
+  Write-Usage
+  exit 1
 }
 
 $ScriptDir =
@@ -73,227 +75,210 @@ $HomeDir =
   elseif ($env:USERPROFILE) { $env:USERPROFILE }
   else { [Environment]::GetFolderPath('UserProfile') }
 
-if ($Codex -and $Claude) {
-  Exit-UsageError -Message 'choose only one of -Codex or -Claude'
+$XdgDataHome =
+  if ($env:XDG_DATA_HOME) { $env:XDG_DATA_HOME }
+  else { Join-Path $HomeDir '.local' 'share' }
+
+$XdgConfigHome =
+  if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME }
+  else { Join-Path $HomeDir '.config' }
+
+$CodeDir = Join-Path $XdgDataHome 'agent-commit-command'
+$ConfigDir = Join-Path $XdgConfigHome 'agent-commit-command'
+
+# === VALIDATION ===
+
+$CommitToolSh = Join-Path $ScriptDir 'commit-tool' 'commit-tool.sh'
+if (-not (Test-Path -LiteralPath $CommitToolSh)) {
+  throw "Error: missing commit-tool/commit-tool.sh in repo"
 }
 
-if (($Codex -or $Claude) -and $DstDir) {
-  Exit-UsageError -Message 'do not provide <dstdir> when using -Codex/-Claude (optional [srcdir] only)'
-}
+# === HELPERS ===
 
-$SourceRoot = $SrcDir
-$DestRoot = $DstDir
-if ($Codex) {
-  if (-not $SourceRoot) {
-    $SourceRoot = Join-Path $ScriptDir 'codex'
-  }
-  $DestRoot = Join-Path $HomeDir '.codex'
-} elseif ($Claude) {
-  if (-not $SourceRoot) {
-    $SourceRoot = Join-Path $ScriptDir 'claude'
-  }
-  $DestRoot = Join-Path $HomeDir '.claude'
-} else {
-  if (-not $SourceRoot -or -not $DestRoot) {
-    Exit-UsageError -Message 'expected <srcdir> <dstdir> or -Codex/-Claude'
-  }
-}
+$Actions = New-Object System.Collections.Generic.List[string]
 
-$SrcCommands = Join-Path $SourceRoot 'commands'
-if (-not (Test-Path -LiteralPath $SrcCommands)) {
-  throw "Missing expected source directory: $SrcCommands"
-}
-
-$CommitToolSrc = Join-Path $ScriptDir 'commit-tool'
-if (-not (Test-Path -LiteralPath (Join-Path $CommitToolSrc 'commit-tool.sh'))) {
-  throw "Missing expected file: $(Join-Path $CommitToolSrc 'commit-tool.sh')"
-}
-if (-not (Test-Path -LiteralPath (Join-Path $CommitToolSrc 'commit-tool.config'))) {
-  throw "Missing expected file: $(Join-Path $CommitToolSrc 'commit-tool.config')"
-}
-
-# Codex stores slash commands in ~/.codex/prompts/.
-$destSubdir =
-  if ($Codex -or ([IO.Path]::GetFileName($DestRoot.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)) -eq '.codex')) { 'prompts' }
-  else { 'commands' }
-
-$DestCommands = Join-Path $DestRoot $destSubdir
-$DestTool = Join-Path $DestCommands 'commit-tool'
-
-$Installed = New-Object System.Collections.Generic.List[string]
-$Skipped = New-Object System.Collections.Generic.List[string]
-
-function Get-RelFromDestRoot {
-  param([Parameter(Mandatory = $true)][string]$Destination)
-  $root = $DestRoot.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
-  if (-not $root) { return $Destination }
-  if ($Destination.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) {
-    return $Destination.Substring($root.Length).TrimStart([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
-  }
-  return $Destination
-}
-
-function Test-FilesSame {
+function Add-Action {
   param(
-    [Parameter(Mandatory = $true)][string]$Source,
-    [Parameter(Mandatory = $true)][string]$Destination
+    [string]$Action,
+    [string]$Target,
+    [string]$Detail = ''
   )
-  if (-not (Test-Path -LiteralPath $Destination)) { return $false }
-  $srcHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash
-  $dstHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
-  return ($srcHash -eq $dstHash)
-}
-
-function Get-CanOverwrite {
-  param([Parameter(Mandatory = $true)][string]$PathOrName)
-  $ext = [IO.Path]::GetExtension($PathOrName).ToLowerInvariant()
-  switch ($ext) {
-    '.sh' { return [bool]$SHUpdate }
-    '.md' { return [bool]$MDUpdate }
-    '.config' { return $false } # Never overwrite config files
-    default { return $false }
-  }
-}
-
-function Write-CheckLine {
-  param(
-    [Parameter(Mandatory = $true)][string]$Source,
-    [Parameter(Mandatory = $true)][string]$Destination,
-    [Parameter(Mandatory = $true)][bool]$CanOverwrite
-  )
-
-  $rel = Get-RelFromDestRoot -Destination $Destination
-
-  if (-not (Test-Path -LiteralPath $Destination)) {
-    Write-Host ("MISSING`t{0}`tinstall" -f $rel)
-    $script:CheckMissing += 1
-    return
-  }
-
-  if (Test-FilesSame -Source $Source -Destination $Destination) {
-    Write-Host ("SAME`t{0}`tskip" -f $rel)
-    $script:CheckSame += 1
-    return
-  }
-
-  if ($CanOverwrite) {
-    Write-Host ("DIFF`t{0}`toverwrite" -f $rel)
-    $script:CheckDiffOverwrite += 1
-    return
-  }
-
-  $ext = [IO.Path]::GetExtension($Destination).ToLowerInvariant()
-  if ($ext -eq '.config') {
-    Write-Host ("DIFF`t{0}`tskip (config never overwritten)" -f $rel)
-  } elseif ($ext -eq '.sh') {
-    Write-Host ("DIFF`t{0}`tskip (needs -SHUpdate)" -f $rel)
-  } elseif ($ext -eq '.md') {
-    Write-Host ("DIFF`t{0}`tskip (needs -MDUpdate)" -f $rel)
+  if ($Detail) {
+    $Actions.Add("${Action}  ${Target}  (${Detail})") | Out-Null
   } else {
-    Write-Host ("DIFF`t{0}`tskip" -f $rel)
+    $Actions.Add("${Action}  ${Target}") | Out-Null
   }
-  $script:CheckDiffSkip += 1
 }
 
-if ($Check) {
-  Write-Host ("Destination root: {0}" -f $DestRoot)
-  Write-Host ("Destination dir:  {0}" -f $DestCommands)
-  Write-Host ''
-  Write-Host "Status`tPath`tAction"
-
-  $script:CheckSame = 0
-  $script:CheckMissing = 0
-  $script:CheckDiffOverwrite = 0
-  $script:CheckDiffSkip = 0
-
-  Get-ChildItem -LiteralPath $SrcCommands -Filter '*.md' -File -ErrorAction Stop | Sort-Object Name | ForEach-Object {
-    $dest = Join-Path $DestCommands $_.Name
-    Write-CheckLine -Source $_.FullName -Destination $dest -CanOverwrite (Get-CanOverwrite -PathOrName $_.Name)
-  }
-
-  Write-CheckLine `
-    -Source (Join-Path $CommitToolSrc 'commit-tool.sh') `
-    -Destination (Join-Path $DestTool 'commit-tool.sh') `
-    -CanOverwrite (Get-CanOverwrite -PathOrName 'commit-tool.sh')
-
-  Write-CheckLine `
-    -Source (Join-Path $CommitToolSrc 'commit-tool.config') `
-    -Destination (Join-Path $DestTool 'commit-tool.config') `
-    -CanOverwrite (Get-CanOverwrite -PathOrName 'commit-tool.config')
-
-  if ($Hooks) {
-    Get-ChildItem -LiteralPath $CommitToolSrc -File -ErrorAction Stop |
-      Where-Object { $_.Name -like 'hook-*.sh' -or $_.Name -like 'hook-*.config' } |
-      Sort-Object Name |
-      ForEach-Object {
-        $dest = Join-Path $DestTool $_.Name
-        Write-CheckLine -Source $_.FullName -Destination $dest -CanOverwrite (Get-CanOverwrite -PathOrName $_.Name)
-      }
-  }
-
-  Write-Host ''
-  Write-Host ("Summary: {0} same, {1} missing, {2} diff(overwrite), {3} diff(skip)" -f $script:CheckSame, $script:CheckMissing, $script:CheckDiffOverwrite, $script:CheckDiffSkip)
-  exit 0
-}
-
-New-Item -ItemType Directory -Force -Path $DestCommands | Out-Null
-New-Item -ItemType Directory -Force -Path $DestTool | Out-Null
-
-function Copy-FileControlled {
+function Ensure-Symlink {
   param(
-    [Parameter(Mandatory = $true)][string]$Source,
-    [Parameter(Mandatory = $true)][string]$Destination,
-    [Parameter(Mandatory = $true)][bool]$CanOverwrite
+    [string]$LinkPath,
+    [string]$Target
+  )
+
+  if (Test-Path -LiteralPath $LinkPath) {
+    $item = Get-Item -LiteralPath $LinkPath -Force
+    if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+      # It's a symlink
+      $current = $item.Target
+      if ($current -eq $Target) {
+        Add-Action -Action 'OK' -Target $LinkPath -Detail 'symlink correct'
+        return
+      }
+      if ($Check) {
+        Add-Action -Action 'UPDATE' -Target $LinkPath -Detail "symlink -> $Target"
+        return
+      }
+      Remove-Item -LiteralPath $LinkPath -Force
+      New-Item -ItemType SymbolicLink -Path $LinkPath -Target $Target -Force | Out-Null
+      Add-Action -Action 'UPDATE' -Target $LinkPath -Detail "symlink -> $Target"
+    } else {
+      Add-Action -Action 'SKIP' -Target $LinkPath -Detail 'exists as regular file; remove manually to switch to symlink'
+    }
+  } else {
+    if ($Check) {
+      Add-Action -Action 'CREATE' -Target $LinkPath -Detail "symlink -> $Target"
+      return
+    }
+    $parentDir = Split-Path -Parent $LinkPath
+    if (-not (Test-Path -LiteralPath $parentDir)) {
+      New-Item -ItemType Directory -Force -Path $parentDir | Out-Null
+    }
+    New-Item -ItemType SymbolicLink -Path $LinkPath -Target $Target -Force | Out-Null
+    Add-Action -Action 'CREATE' -Target $LinkPath -Detail "symlink -> $Target"
+  }
+}
+
+function Seed-Config {
+  param(
+    [string]$Source,
+    [string]$Destination
   )
 
   if (Test-Path -LiteralPath $Destination) {
-    if ($CanOverwrite) {
-      Copy-Item -LiteralPath $Source -Destination $Destination -Force
-      $Installed.Add("$Destination (overwritten)") | Out-Null
+    $srcHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash
+    $dstHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
+    if ($srcHash -eq $dstHash) {
+      Add-Action -Action 'OK' -Target $Destination -Detail 'config unchanged'
     } else {
-      $Skipped.Add("$Destination (exists)") | Out-Null
+      Add-Action -Action 'SKIP' -Target $Destination -Detail 'config exists, not overwriting'
     }
     return
   }
 
+  if ($Check) {
+    Add-Action -Action 'SEED' -Target $Destination -Detail "from $Source"
+    return
+  }
+
+  $parentDir = Split-Path -Parent $Destination
+  if (-not (Test-Path -LiteralPath $parentDir)) {
+    New-Item -ItemType Directory -Force -Path $parentDir | Out-Null
+  }
   Copy-Item -LiteralPath $Source -Destination $Destination
-  $Installed.Add($Destination) | Out-Null
+  Add-Action -Action 'SEED' -Target $Destination -Detail 'default config'
 }
 
-Get-ChildItem -LiteralPath $SrcCommands -Filter '*.md' -File -ErrorAction Stop | ForEach-Object {
-  $dest = Join-Path $DestCommands $_.Name
-  Copy-FileControlled -Source $_.FullName -Destination $dest -CanOverwrite (Get-CanOverwrite -PathOrName $_.Name)
+# === CODE_DIR: ensure ~/.local/share/agent-commit-command points to this repo ===
+
+$ScriptReal = (Resolve-Path -LiteralPath $ScriptDir).Path
+$CodeReal = $null
+if (Test-Path -LiteralPath $CodeDir) {
+  try { $CodeReal = (Resolve-Path -LiteralPath $CodeDir).Path } catch {}
 }
 
-Copy-FileControlled `
-  -Source (Join-Path $CommitToolSrc 'commit-tool.sh') `
-  -Destination (Join-Path $DestTool 'commit-tool.sh') `
-  -CanOverwrite (Get-CanOverwrite -PathOrName 'commit-tool.sh')
+if ($ScriptReal -eq $CodeReal) {
+  Add-Action -Action 'OK' -Target $CodeDir -Detail 'already points to repo'
+} elseif ((Test-Path -LiteralPath $CodeDir) -and ((Get-Item -LiteralPath $CodeDir -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+  if ($Check) {
+    Add-Action -Action 'UPDATE' -Target $CodeDir -Detail "symlink -> $ScriptDir"
+  } else {
+    Remove-Item -LiteralPath $CodeDir -Force
+    New-Item -ItemType SymbolicLink -Path $CodeDir -Target $ScriptDir -Force | Out-Null
+    Add-Action -Action 'UPDATE' -Target $CodeDir -Detail "symlink -> $ScriptDir"
+  }
+} elseif (Test-Path -LiteralPath $CodeDir) {
+  throw "$CodeDir exists but is not this repo and not a symlink. Remove it manually or clone this repo directly to $CodeDir"
+} else {
+  if ($Check) {
+    Add-Action -Action 'CREATE' -Target $CodeDir -Detail "symlink -> $ScriptDir"
+  } else {
+    $parentDir = Split-Path -Parent $CodeDir
+    if (-not (Test-Path -LiteralPath $parentDir)) {
+      New-Item -ItemType Directory -Force -Path $parentDir | Out-Null
+    }
+    New-Item -ItemType SymbolicLink -Path $CodeDir -Target $ScriptDir -Force | Out-Null
+    Add-Action -Action 'CREATE' -Target $CodeDir -Detail "symlink -> $ScriptDir"
+  }
+}
 
-Copy-FileControlled `
-  -Source (Join-Path $CommitToolSrc 'commit-tool.config') `
-  -Destination (Join-Path $DestTool 'commit-tool.config') `
-  -CanOverwrite (Get-CanOverwrite -PathOrName 'commit-tool.config')
+# === CONFIG_DIR: seed default configs ===
+
+if (-not $Check) {
+  New-Item -ItemType Directory -Force -Path $ConfigDir | Out-Null
+}
+
+Seed-Config -Source (Join-Path $ScriptDir 'defaults' 'commit-tool.config') -Destination (Join-Path $ConfigDir 'commit-tool.config')
+
+# === HOOKS ===
 
 if ($Hooks) {
-  Get-ChildItem -LiteralPath $CommitToolSrc -File -ErrorAction Stop |
-    Where-Object { $_.Name -like 'hook-*.sh' -or $_.Name -like 'hook-*.config' } |
-    ForEach-Object {
-      $dest = Join-Path $DestTool $_.Name
-      Copy-FileControlled -Source $_.FullName -Destination $dest -CanOverwrite (Get-CanOverwrite -PathOrName $_.Name)
+  if (-not $Check) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $ConfigDir 'hooks') | Out-Null
+  }
+
+  $hooksAvail = Join-Path $ScriptDir 'commit-tool' 'hooks-available'
+  Get-ChildItem -LiteralPath $hooksAvail -Filter 'hook-*.sh' -File -ErrorAction SilentlyContinue | ForEach-Object {
+    Ensure-Symlink -LinkPath (Join-Path $ConfigDir 'hooks' $_.Name) -Target $_.FullName
+
+    $configName = $_.Name -replace '\.sh$', '.config'
+    $defaultConfig = Join-Path $ScriptDir 'defaults' 'hooks' $configName
+    if (Test-Path -LiteralPath $defaultConfig) {
+      Seed-Config -Source $defaultConfig -Destination (Join-Path $ConfigDir 'hooks' $configName)
     }
+  }
 }
 
-Write-Host 'Installation complete.'
+# === CODEX .md SYMLINKS ===
+
+if ($Codex) {
+  $CodexDir = Join-Path $HomeDir '.codex' 'prompts'
+  if (-not $Check) {
+    New-Item -ItemType Directory -Force -Path $CodexDir | Out-Null
+  }
+
+  Get-ChildItem -LiteralPath (Join-Path $ScriptDir 'codex' 'commands') -Filter '*.md' -File -ErrorAction Stop | ForEach-Object {
+    Ensure-Symlink -LinkPath (Join-Path $CodexDir $_.Name) -Target $_.FullName
+  }
+}
+
+# === CLAUDE .md SYMLINKS ===
+
+if ($Claude) {
+  $ClaudeDir = Join-Path $HomeDir '.claude' 'commands'
+  if (-not $Check) {
+    New-Item -ItemType Directory -Force -Path $ClaudeDir | Out-Null
+  }
+
+  Get-ChildItem -LiteralPath (Join-Path $ScriptDir 'claude' 'commands') -Filter '*.md' -File -ErrorAction Stop | ForEach-Object {
+    Ensure-Symlink -LinkPath (Join-Path $ClaudeDir $_.Name) -Target $_.FullName
+  }
+}
+
+# === SUMMARY ===
+
+if ($Check) {
+  Write-Host '=== Dry Run ==='
+} else {
+  Write-Host '=== Installation Complete ==='
+}
+
+Write-Host ''
+foreach ($action in $Actions) {
+  Write-Host "  $action"
+}
 Write-Host ''
 
-if ($Installed.Count -gt 0) {
-  Write-Host 'Installed:'
-  foreach ($item in $Installed) { Write-Host "  $item" }
-}
-
-if ($Skipped.Count -gt 0) {
-  Write-Host ''
-  Write-Host 'Skipped (use -SHUpdate or -MDUpdate to overwrite):'
-  foreach ($item in $Skipped) { Write-Host "  $item" }
+if ($Check) {
+  Write-Host 'Run without -Check to apply these changes.'
 }

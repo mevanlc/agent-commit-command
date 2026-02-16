@@ -3,4 +3,4 @@ name: commit
 description: Git commit helper
 argument-hint: --<staged|all|ask> [additional instructions]
 ---
-!`~/.claude/commands/commit-tool/commit-tool.sh git "$ARGUMENTS"`
+!`~/.local/share/agent-commit-command/commit-tool/commit-tool.sh git "$ARGUMENTS"`

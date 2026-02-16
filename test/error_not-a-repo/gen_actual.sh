@@ -3,5 +3,7 @@ set -euo pipefail
 CASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$CASE_DIR")")"
 TARGET="${1:-${CASE_DIR}/actual.txt}"
+source "${PROJECT_DIR}/test/setup_config.sh"
+export GIT_CEILING_DIRECTORIES="${CASE_DIR}"
 cd "${CASE_DIR}/repo"
 ("${PROJECT_DIR}/commit-tool/commit-tool.sh" git --staged 2>&1 || true) | "${PROJECT_DIR}/test/normalize.sh" > "$TARGET"

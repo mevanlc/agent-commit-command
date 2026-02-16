@@ -1,9 +1,1 @@
-# Git Commit - Staged Only Mode
-
-# Nothing Staged - STOP
-
-There are no staged changes. Inform the user:
-- They need to stage changes first (`git add <files>`)
-- Or use `/commit --all` to stage everything
-- Or use `/commit --ask` for interactive help
-
+fatal: not a git repository (or any of the parent directories): .git
