@@ -2,9 +2,9 @@
 # install.ps1 - Install slash commands + commit-tool
 #
 # Usage:
-#   ./install.ps1 -Codex [-Hooks] [-UpgradeSh] [-UpgradeMd]
-#   ./install.ps1 -Claude [-Hooks] [-UpgradeSh] [-UpgradeMd]
-#   ./install.ps1 <srcdir> <dstdir> [-Hooks] [-UpgradeSh] [-UpgradeMd]
+#   ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate]
+#   ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate]
+#   ./install.ps1 <srcdir> <dstdir> [-Hooks] [-SHUpdate] [-MDUpdate]
 #
 # Where:
 #   srcdir: repo subdir containing ./commands (e.g. ./codex or ./claude)
@@ -15,8 +15,10 @@ param(
   [switch]$Codex,
   [switch]$Claude,
   [switch]$Hooks,
-  [switch]$UpgradeSh,
-  [switch]$UpgradeMd,
+  [Alias('UpgradeSh')]
+  [switch]$SHUpdate,
+  [Alias('UpgradeMd')]
+  [switch]$MDUpdate,
   [Alias('h')]
   [switch]$Help,
   [Parameter(Position = 0)]
@@ -32,16 +34,16 @@ $ErrorActionPreference = 'Stop'
 
 function Write-Usage {
   Write-Host 'Usage:'
-  Write-Host '  ./install.ps1 -Codex [-Hooks] [-UpgradeSh] [-UpgradeMd]'
-  Write-Host '  ./install.ps1 -Claude [-Hooks] [-UpgradeSh] [-UpgradeMd]'
-  Write-Host '  ./install.ps1 <srcdir> <dstdir> [-Hooks] [-UpgradeSh] [-UpgradeMd]'
+  Write-Host '  ./install.ps1 -Codex [-Hooks] [-SHUpdate] [-MDUpdate]'
+  Write-Host '  ./install.ps1 -Claude [-Hooks] [-SHUpdate] [-MDUpdate]'
+  Write-Host '  ./install.ps1 <srcdir> <dstdir> [-Hooks] [-SHUpdate] [-MDUpdate]'
   Write-Host ''
   Write-Host 'Note: PowerShell uses single-dash switches. Use ./install.sh for --long-options.'
   Write-Host ''
   Write-Host 'Examples:'
-  Write-Host '  ./install.ps1 -Codex -UpgradeSh -UpgradeMd'
+  Write-Host '  ./install.ps1 -Codex -SHUpdate -MDUpdate'
   Write-Host '  ./install.ps1 -Claude -Hooks'
-  Write-Host '  ./install.ps1 ./codex ~/.codex/ -UpgradeSh -UpgradeMd'
+  Write-Host '  ./install.ps1 ./codex ~/.codex/ -SHUpdate -MDUpdate'
 }
 
 function Exit-UsageError {
@@ -122,8 +124,8 @@ function Get-CanOverwrite {
   param([Parameter(Mandatory = $true)][string]$PathOrName)
   $ext = [IO.Path]::GetExtension($PathOrName).ToLowerInvariant()
   switch ($ext) {
-    '.sh' { return [bool]$UpgradeSh }
-    '.md' { return [bool]$UpgradeMd }
+    '.sh' { return [bool]$SHUpdate }
+    '.md' { return [bool]$MDUpdate }
     '.config' { return $false } # Never overwrite config files
     default { return $false }
   }
@@ -184,6 +186,6 @@ if ($Installed.Count -gt 0) {
 
 if ($Skipped.Count -gt 0) {
   Write-Host ''
-  Write-Host 'Skipped (use -UpgradeSh or -UpgradeMd to overwrite):'
+  Write-Host 'Skipped (use -SHUpdate or -MDUpdate to overwrite):'
   foreach ($item in $Skipped) { Write-Host "  $item" }
 }

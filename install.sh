@@ -6,14 +6,14 @@
 #   ./install.sh --claude [options]
 #   ./install.sh <srcdir> <dstdir> [options]
 #
-	# Where:
-	#   srcdir: repo subdir containing ./commands (e.g. ./codex or ./claude)
-	#   dstdir: base config dir (e.g. ~/.codex/ or ~/.claude/)
-	#
-	# Options:
-	#   --hooks       Also install hook-*.{sh,config} files
-	#   --upgrade-sh  Overwrite existing .sh files (not .config)
-	#   --upgrade-md  Overwrite existing .md files (not .config)
+# Where:
+#   srcdir: repo subdir containing ./commands (e.g. ./codex or ./claude)
+#   dstdir: base config dir (e.g. ~/.codex/ or ~/.claude/)
+#
+# Options:
+#   --hooks      Also install hook-*.{sh,config} files
+#   --sh-update  Overwrite existing .sh files (not .config)
+#   --md-update  Overwrite existing .md files (not .config)
 
 set -euo pipefail
 
@@ -29,14 +29,14 @@ POSITIONAL=()
 usage() {
   cat <<'EOF'
 Usage:
-  ./install.sh --codex [--hooks] [--upgrade-sh] [--upgrade-md]
-  ./install.sh --claude [--hooks] [--upgrade-sh] [--upgrade-md]
-  ./install.sh <srcdir> <dstdir> [--hooks] [--upgrade-sh] [--upgrade-md]
+  ./install.sh --codex [--hooks] [--sh-update] [--md-update]
+  ./install.sh --claude [--hooks] [--sh-update] [--md-update]
+  ./install.sh <srcdir> <dstdir> [--hooks] [--sh-update] [--md-update]
 
 Examples:
-  ./install.sh --codex --upgrade-sh --upgrade-md
+  ./install.sh --codex --sh-update --md-update
   ./install.sh --claude --hooks
-  ./install.sh ./codex ~/.codex/ --upgrade-sh --upgrade-md
+  ./install.sh ./codex ~/.codex/ --sh-update --md-update
 EOF
 }
 
@@ -45,8 +45,8 @@ while [[ $# -gt 0 ]]; do
     --codex) MODE="codex"; shift ;;
     --claude) MODE="claude"; shift ;;
     --hooks) INSTALL_HOOKS=1; shift ;;
-    --upgrade-sh) UPGRADE_SH=1; shift ;;
-    --upgrade-md) UPGRADE_MD=1; shift ;;
+    --sh-update|--upgrade-sh) UPGRADE_SH=1; shift ;;
+    --md-update|--upgrade-md) UPGRADE_MD=1; shift ;;
     -h|--help) usage; exit 0 ;;
     --) shift; POSITIONAL+=("$@"); break ;;
     -*)
@@ -88,16 +88,16 @@ fi
 SRCDIR="${SRCDIR/#\~/$HOME}"
 DSTDIR="${DSTDIR/#\~/$HOME}"
 
-	SRC_COMMANDS="${SRCDIR%/}/commands"
-	DEST_ROOT="${DSTDIR%/}"
-	DEST_SUBDIR="commands"
-	# Codex stores slash commands in ~/.codex/prompts/.
-	# When installing to Codex, put both the .md prompts and commit-tool under prompts/.
-	if [[ "$MODE" == "codex" || "$(basename "${DEST_ROOT}")" == ".codex" || "$(basename "${SRCDIR%/}")" == "codex" ]]; then
-	  DEST_SUBDIR="prompts"
-	fi
-	DEST_COMMANDS="${DEST_ROOT}/${DEST_SUBDIR}"
-	DEST_TOOL="${DEST_COMMANDS}/commit-tool"
+SRC_COMMANDS="${SRCDIR%/}/commands"
+DEST_ROOT="${DSTDIR%/}"
+DEST_SUBDIR="commands"
+# Codex stores slash commands in ~/.codex/prompts/.
+# When installing to Codex, put both the .md prompts and commit-tool under prompts/.
+if [[ "$MODE" == "codex" || "$(basename "${DEST_ROOT}")" == ".codex" || "$(basename "${SRCDIR%/}")" == "codex" ]]; then
+  DEST_SUBDIR="prompts"
+fi
+DEST_COMMANDS="${DEST_ROOT}/${DEST_SUBDIR}"
+DEST_TOOL="${DEST_COMMANDS}/commit-tool"
 
 if [[ ! -d "$SRC_COMMANDS" ]]; then
   echo "Missing expected source directory: $SRC_COMMANDS" >&2
@@ -178,7 +178,7 @@ fi
 
 if [[ ${#SKIPPED[@]} -gt 0 ]]; then
   echo ""
-  echo "Skipped (use --upgrade-sh or --upgrade-md to overwrite):"
+  echo "Skipped (use --sh-update or --md-update to overwrite):"
   for f in "${SKIPPED[@]}"; do
     echo "  $f"
   done
