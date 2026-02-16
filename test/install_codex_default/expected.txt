@@ -1,0 +1,4 @@
+./prompts/commit-tool/commit-tool.config
+./prompts/commit-tool/commit-tool.sh
+./prompts/commit.md
+./prompts/gdf-commit.md

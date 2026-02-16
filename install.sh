@@ -29,13 +29,14 @@ POSITIONAL=()
 usage() {
   cat <<'EOF'
 Usage:
-  ./install.sh --codex [--hooks] [--sh-update] [--md-update]
-  ./install.sh --claude [--hooks] [--sh-update] [--md-update]
+  ./install.sh --codex [--hooks] [--sh-update] [--md-update] [srcdir]
+  ./install.sh --claude [--hooks] [--sh-update] [--md-update] [srcdir]
   ./install.sh <srcdir> <dstdir> [--hooks] [--sh-update] [--md-update]
 
 Examples:
   ./install.sh --codex --sh-update --md-update
   ./install.sh --claude --hooks
+  ./install.sh --codex ./codex --sh-update --md-update
   ./install.sh ./codex ~/.codex/ --sh-update --md-update
 EOF
 }
@@ -60,8 +61,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -n "$MODE" && ${#POSITIONAL[@]} -gt 0 ]]; then
-  echo "Error: do not combine --${MODE} with <srcdir> <dstdir> positional args" >&2
+if [[ -n "$MODE" && ${#POSITIONAL[@]} -gt 1 ]]; then
+  echo "Error: --${MODE} mode optionally takes [srcdir] (no <dstdir>)" >&2
   usage >&2
   exit 1
 fi
@@ -69,10 +70,18 @@ fi
 SRCDIR=""
 DSTDIR=""
 if [[ "$MODE" == "codex" ]]; then
-  SRCDIR="${SCRIPT_DIR}/codex"
+  if [[ ${#POSITIONAL[@]} -eq 1 ]]; then
+    SRCDIR="${POSITIONAL[0]}"
+  else
+    SRCDIR="${SCRIPT_DIR}/codex"
+  fi
   DSTDIR="${HOME}/.codex"
 elif [[ "$MODE" == "claude" ]]; then
-  SRCDIR="${SCRIPT_DIR}/claude"
+  if [[ ${#POSITIONAL[@]} -eq 1 ]]; then
+    SRCDIR="${POSITIONAL[0]}"
+  else
+    SRCDIR="${SCRIPT_DIR}/claude"
+  fi
   DSTDIR="${HOME}/.claude"
 else
   if [[ ${#POSITIONAL[@]} -ne 2 ]]; then

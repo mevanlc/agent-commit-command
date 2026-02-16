@@ -1,0 +1,3 @@
+./prompts/commit-tool/commit-tool.config
+./prompts/commit-tool/commit-tool.sh
+./prompts/custom.md
