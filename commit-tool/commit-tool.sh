@@ -76,21 +76,19 @@ fi
 case "$MODE" in
   --staged|--all|--ask) ;;
   *)
-    cat <<EOF
-# Invalid Invocation - Unknown Mode
-
-The user provided an unrecognized mode: \`$MODE\`
-
+    printf '# Invalid Invocation - Unknown Mode\n\n'
+    printf 'The user provided an unrecognized mode: `%s`\n\n' "$MODE"
+    cat <<'EOF'
 Please inform them:
 
-**Valid modes:** \`--staged\`, \`--all\`, \`--ask\`
+**Valid modes:** `--staged`, `--all`, `--ask`
 
 **Examples:**
-\`\`\`
+```
 /commit --staged
 /commit --all fix the auth routes
 /commit --ask
-\`\`\`
+```
 EOF
     exit 0
     ;;
@@ -208,32 +206,24 @@ fi
 
 # === OUTPUT COMPOSITION HELPERS ===
 
-# These functions build output sections into variables so we can
-# measure total size before emitting, and externalize the diff if needed.
+# IMPORTANT: All output helpers use printf instead of heredocs (cat <<EOF).
+# Bash 5.x has a heredoc deadlock bug when content reaches 512 bytes
+# (PIPE_BUF on macOS). printf bypasses the internal pipe entirely.
 
 compose_diff_inline() {
   local diff_content="$1"
-  cat <<EOF
-# Diff
-
-Output of \`$GIT_CMD diff --cached\`:
-\`\`\`diff
-$diff_content
-\`\`\`
-
-EOF
+  printf '# Diff\n\nOutput of `%s diff --cached`:\n```diff\n' "$GIT_CMD"
+  printf '%s\n' "$diff_content"
+  printf '```\n\n'
 }
 
 compose_diff_external() {
   local diff_file="$1"
   local char_count="$2"
-  cat <<EOF
-# Diff
-
-**Diff too large for inline display** ($char_count characters)
-
-The diff has been saved to: \`$diff_file\`
-
+  printf '# Diff\n\n'
+  printf '**Diff too large for inline display** (%s characters)\n\n' "$char_count"
+  printf 'The diff has been saved to: `%s`\n\n' "$diff_file"
+  cat <<'EOF'
 **Instructions for reviewing the diff:**
 1. Use the Read tool to examine the diff file (you may need to read it in chunks using offset/limit if it's very large)
 2. After you have fully reviewed the diff, delete the temp file
@@ -244,15 +234,40 @@ EOF
 
 compose_diff_too_many_lines() {
   local line_count="$1"
-  cat <<EOF
-# Diff
-**DIFF TOO LARGE** ($line_count lines) - discuss strategies with user:
+  printf '# Diff\n'
+  printf '**DIFF TOO LARGE** (%s lines) - discuss strategies with user:\n' "$line_count"
+  cat <<'EOF'
 - Split the commit
 - Review anyway (might fit context)
 - Reduce diff context lines
 - Skip lock files
 
 EOF
+}
+
+# Emit the extra-instructions block (if any)
+emit_extra_instructions() {
+  if [[ -n "$EXTRA_INSTRUCTIONS" ]]; then
+    printf '# Additional Instructions from User\n%s\n\n' "$EXTRA_INSTRUCTIONS"
+  fi
+}
+
+# Emit branch and identity line
+emit_branch_identity() {
+  printf 'Branch: `%s`\nIdentity: `%s <%s>`\n\n' "$BRANCH" "$USER_NAME" "$USER_EMAIL"
+}
+
+# Emit report sections (recent commits, preflight output)
+emit_report_sections() {
+  [[ -n "$RECENT_COMMITS_SECTION" ]] && echo "$RECENT_COMMITS_SECTION"
+  [[ -n "$PREFLIGHT_OUTPUT" ]] && echo "$PREFLIGHT_OUTPUT"
+  true  # avoid set -e exit when last test is false
+}
+
+# Emit conflicts block
+emit_conflicts_block() {
+  printf '# CONFLICTS DETECTED - STOP\n```\n%s\n```\n' "$CONFLICTS"
+  printf 'Inform user and help resolve before committing.\n\n'
 }
 
 # === MODE: --staged ===
@@ -266,43 +281,24 @@ if [[ "$MODE" == "--staged" ]]; then
 Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 EOF
-    if [[ -n "$EXTRA_INSTRUCTIONS" ]]; then
-      cat <<EOF
-# Additional Instructions from User
-$EXTRA_INSTRUCTIONS
-
-EOF
-    fi
-    cat <<EOF
-Branch: \`$BRANCH\`
-Identity: \`$USER_NAME <$USER_EMAIL>\`
-
-EOF
-    [[ -n "$RECENT_COMMITS_SECTION" ]] && echo "$RECENT_COMMITS_SECTION"
-    [[ -n "$PREFLIGHT_OUTPUT" ]] && echo "$PREFLIGHT_OUTPUT"
-    cat <<EOF
-# CONFLICTS DETECTED - STOP
-\`\`\`
-$CONFLICTS
-\`\`\`
-Inform user and help resolve before committing.
-
-EOF
+    emit_extra_instructions
+    emit_branch_identity
+    emit_report_sections
+    emit_conflicts_block
     exit 0
   fi
 
   if [[ -z "$STAGED_FILES" ]]; then
-    cat <<EOF
+    cat <<'EOF'
 # Git Commit - Staged Only Mode
 
 # Nothing Staged - STOP
 
-There are no staged changes. Inform the user:
-- They need to stage changes first (\`$GIT_CMD add <files>\`)
-- Or use \`/commit --all\` to stage everything
-- Or use \`/commit --ask\` for interactive help
-
 EOF
+    printf 'There are no staged changes. Inform the user:\n'
+    printf -- '- They need to stage changes first (`%s add <files>`)\n' "$GIT_CMD"
+    printf -- '- Or use `/commit --all` to stage everything\n'
+    printf -- '- Or use `/commit --ask` for interactive help\n\n'
     exit 0
   fi
 
@@ -428,28 +424,10 @@ if [[ "$MODE" == "--all" ]]; then
 Stage all outstanding changes, then commit.
 
 EOF
-    if [[ -n "$EXTRA_INSTRUCTIONS" ]]; then
-      cat <<EOF
-# Additional Instructions from User
-$EXTRA_INSTRUCTIONS
-
-EOF
-    fi
-    cat <<EOF
-Branch: \`$BRANCH\`
-Identity: \`$USER_NAME <$USER_EMAIL>\`
-
-EOF
-    [[ -n "$RECENT_COMMITS_SECTION" ]] && echo "$RECENT_COMMITS_SECTION"
-    [[ -n "$PREFLIGHT_OUTPUT" ]] && echo "$PREFLIGHT_OUTPUT"
-    cat <<EOF
-# CONFLICTS DETECTED - STOP
-\`\`\`
-$CONFLICTS
-\`\`\`
-Inform user and help resolve before committing.
-
-EOF
+    emit_extra_instructions
+    emit_branch_identity
+    emit_report_sections
+    emit_conflicts_block
     exit 0
   fi
 
@@ -629,49 +607,24 @@ Help the user decide what to stage and commit.
 
 EOF
 
-  if [[ -n "$EXTRA_INSTRUCTIONS" ]]; then
-    cat <<EOF
-# Additional Instructions from User
-$EXTRA_INSTRUCTIONS
-
-EOF
-  fi
-
-  cat <<EOF
-Branch: \`$BRANCH\`
-Identity: \`$USER_NAME <$USER_EMAIL>\`
-
-EOF
+  emit_extra_instructions
+  emit_branch_identity
 
   # Report sections
-  [[ -n "$RECENT_COMMITS_SECTION" ]] && echo "$RECENT_COMMITS_SECTION"
-  # Preflight hook output (identity reports and warnings)
-  [[ -n "$PREFLIGHT_OUTPUT" ]] && echo "$PREFLIGHT_OUTPUT"
+  emit_report_sections
 
   if [[ -n "$CONFLICTS" ]]; then
-    cat <<EOF
-# CONFLICTS DETECTED - STOP
-\`\`\`
-$CONFLICTS
-\`\`\`
-Inform user and help resolve before committing.
-
-EOF
+    emit_conflicts_block
     exit 0
   fi
 
   # Get full status including untracked
   FULL_STATUS=$($GIT_CMD status --porcelain -u 2>/dev/null || true)
 
-  cat <<EOF
-# Working Tree Status
-
-Output of \`$GIT_CMD status --porcelain -u\`:
-\`\`\`
-${FULL_STATUS:-"(clean)"}
-\`\`\`
-
-EOF
+  printf '# Working Tree Status\n\n'
+  printf 'Output of `%s status --porcelain -u`:\n```\n' "$GIT_CMD"
+  printf '%s\n' "${FULL_STATUS:-"(clean)"}"
+  printf '```\n\n'
 
   if [[ -z "$FULL_STATUS" ]]; then
     cat <<'EOF'
@@ -683,28 +636,33 @@ EOF
     exit 0
   fi
 
-  cat <<EOF
-# Instructions
-
+  printf '# Instructions\n\n'
+  cat <<'EOF'
 1. **Show the user what's available to commit** - relay the status above (they can't see slash command output):
-   - First column: staged status (\`M\`=modified, \`A\`=added, \`D\`=deleted, \`R\`=renamed)
+   - First column: staged status (`M`=modified, `A`=added, `D`=deleted, `R`=renamed)
    - Second column: unstaged status
-   - \`??\` = untracked file
+   - `??` = untracked file
+EOF
+  cat <<'EOF'
 2. **Ask the user** what should be included in this commit:
    - Suggest logical groupings if changes seem separable
    - If user gave additional instructions, use those as guidance
    - Offer options like "all of it", "just the staged", or specific files
-3. Stage the selected changes (\`$GIT_CMD add <files>\`)
-4. **Before generating the commit review**, run \`$GIT_CMD status --porcelain -u\` to refresh your view of what's staged
+EOF
+  printf '3. Stage the selected changes (`%s add <files>`)\n' "$GIT_CMD"
+  printf '4. **Before generating the commit review**, run `%s status --porcelain -u` to refresh your view of what'\''s staged\n' "$GIT_CMD"
+  cat <<'EOF'
 5. Generate a commit message (imperative summary, optional bullets)
-6. $COMMIT_REVIEW_FORMAT
+EOF
+  printf '6. %s\n' "$COMMIT_REVIEW_FORMAT"
+  cat <<'EOF'
 7. If confirmed: commit using HEREDOC format
 8. Show resulting commit hash
 
 # Safety Checks
 
 Stop and warn if selected files include:
-- Secrets (\`.env\`, credentials, API keys, certs)
+- Secrets (`.env`, credentials, API keys, certs)
 - Large binaries that look accidental
 EOF
   exit 0
