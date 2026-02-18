@@ -51,6 +51,7 @@ fi
 
 # Compare
 if diff -q "${CASE_DIR}/expected.txt" "${CASE_DIR}/actual.txt" >/dev/null 2>&1; then
+  rm -rf "${CASE_DIR}/repo" "${CASE_DIR}/actual.txt" "${CASE_DIR}/config"
   echo "PASS: ${CASE_NAME}"
   exit 0
 else

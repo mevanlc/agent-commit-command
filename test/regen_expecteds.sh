@@ -19,9 +19,10 @@ for case_dir in "${cases[@]}"; do
   case_name="$(basename "$case_dir")"
   echo "Regenerating: ${case_name}"
 
-  rm -rf "${case_dir}/repo" "${case_dir}/actual.txt"
+  rm -rf "${case_dir}/repo" "${case_dir}/actual.txt" "${case_dir}/config"
   "${case_dir}/gen_repo.sh" "${case_dir}/repo" 2>/dev/null || true
   "${case_dir}/gen_actual.sh" "${case_dir}/expected.txt" 2>/dev/null || true
+  rm -rf "${case_dir}/repo" "${case_dir}/config"
 done
 
 echo "Done."
