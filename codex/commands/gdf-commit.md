@@ -40,16 +40,18 @@ Assume the command is functioning (execute without testing for existence).
 ```
 & "C:\Program Files\Git\bin\bash.exe" ~/.local/share/agent-commit-command/commit-tool/commit-tool.sh gdf "$ARGUMENTS"
 ```
-
 ## Windows (pwsh) + Git Bash: heredoc-safe pattern
+You can use this command syntax literally as written.
+It does not require any extra escaping or quoting.
 ```powershell
 & "C:\Program Files\Git\bin\bash.exe" -lc @'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 cat <<'EOF' | git commit -F -
-<commit message from Commit Review>
+commit summary
+  - commit detail 1
+  - commit detail N
 EOF
 git rev-parse HEAD
 '@
 ```
-
