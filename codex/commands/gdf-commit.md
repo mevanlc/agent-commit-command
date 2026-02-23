@@ -3,11 +3,11 @@ description: Git commit helper (using gdf wrapper via commit-tool.sh)
 argument-hint: --<staged|all|ask> [additional instructions]
 ---
 
-## IMPORTANT: Use the `gdf` command instead of the `git` command
-
+# IMPORTANT: Use the `gdf` base command instead of the `git` base command
 You MUST use the `gdf` command (a wrapper around git) for all git operations in this workflow.
 Do not use raw `git` commands directly without first discussing with the user.
 
+# Instructions
 If `gdf`:
 - is unavailable
 - returns an unexpected error
@@ -31,4 +31,25 @@ Then follow the script’s output exactly:
 - Present the requested **Commit Review** and wait for explicit user confirmation before running any commit command.
 - If confirmed, perform the commit as instructed (use the heredoc format) and show the resulting commit hash.
 
-If `$ARGUMENTS` is empty, ask the user to provide a required mode: `--staged`, `--all`, or `--ask`.
+If the text inside the following backticks is empty: `$ARGUMENTS`
+Stop and ask the user to provide the required mode: `--staged`, `--all`, or `--ask`.
+
+# Note when running on a Windows shell (pwsh)
+On Windows this command has only been tested with Git Bash. If Git Bash is not available, STOP and inform the user.
+Assume the command is functioning (execute without testing for existence).
+```
+& "C:\Program Files\Git\bin\bash.exe" ~/.local/share/agent-commit-command/commit-tool/commit-tool.sh gdf "$ARGUMENTS"
+```
+
+## Windows (pwsh) + Git Bash: heredoc-safe pattern
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" -lc @'
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+cat <<'EOF' | git commit -F -
+<commit message from Commit Review>
+EOF
+git rev-parse HEAD
+'@
+```
+
