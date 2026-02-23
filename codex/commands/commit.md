@@ -17,3 +17,22 @@ Then follow the script’s output exactly:
 - If confirmed, perform the commit as instructed (use the heredoc format) and show the resulting commit hash.
 
 If `$ARGUMENTS` is empty, ask the user to provide a required mode: `--staged`, `--all`, or `--ask`.
+
+# Note when running on a Windows shell (pwsh)
+On Windows this command has only been tested with Git Bash. If Git Bash is not available, STOP and inform the user.
+Assume the command is functioning (execute without testing for existence).
+```
+& "C:\Program Files\Git\bin\bash.exe" ~/.local/share/agent-commit-command/commit-tool/commit-tool.sh git "$ARGUMENTS"
+```
+
+## Windows (pwsh) + Git Bash: heredoc-safe pattern
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" -lc @'
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+cat <<'EOF' | git commit -F -
+<commit message from Commit Review>
+EOF
+git rev-parse HEAD
+'@
+```
