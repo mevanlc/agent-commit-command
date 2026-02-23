@@ -183,9 +183,13 @@ D  path/to/deleted
 R  {old/path -> new/path}
 
 ## Proposed Commit Message
+
 <summary line>
-[- bullet if needed]
-[- bullet if needed]
+
+    [- bullet if needed]
+    [- bullet if needed]
+
+----
 
 Proceed? ([y]es / [n]o)
 ```
