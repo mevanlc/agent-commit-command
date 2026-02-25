@@ -46,12 +46,13 @@ It does not require any extra escaping or quoting.
 ```powershell
 & "C:\Program Files\Git\bin\bash.exe" -lc @'
 set -euo pipefail
-cd "$(git rev-parse --show-toplevel)"
-cat <<'EOF' | git commit -F -
+cd "$(gdf rev-parse --show-toplevel)"
+cat <<'EOF' | gdf commit -F -
 commit summary
+
   - commit detail 1
   - commit detail N
 EOF
-git rev-parse HEAD
+gdf rev-parse HEAD
 '@
 ```
