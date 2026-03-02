@@ -1,5 +1,9 @@
 # Git Commit - Staged Only Mode
 
+## Global Instructions
+
+- Do not push without the user's clear and affirmative instruction to do so
+
 # Nothing Staged - STOP
 
 There are no staged changes. Inform the user:

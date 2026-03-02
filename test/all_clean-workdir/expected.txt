@@ -1,5 +1,9 @@
 # Git Commit - Stage All Mode
 
+## Global Instructions
+
+- Do not push without the user's clear and affirmative instruction to do so
+
 # No Changes - STOP
 
 Working tree is clean. Nothing to commit. Inform the user.

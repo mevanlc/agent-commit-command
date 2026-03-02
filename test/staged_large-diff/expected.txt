@@ -1,5 +1,9 @@
 # Git Commit - Staged Only Mode
 
+## Global Instructions
+
+- Do not push without the user's clear and affirmative instruction to do so
+
 Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 Branch: `main`
@@ -24,7 +28,7 @@ The diff has been saved to: `/tmp/commit-tool-diff-PID.txt`
 
 **Instructions for reviewing the diff:**
 1. Use the Read tool to examine the diff file (you may need to read it in chunks using offset/limit if it's very large)
-2. After you have fully reviewed the diff, delete the temp file
+2. After you have fully reviewed the diff, you MUST delete the diff temp file for privacy and cleanliness.
 3. Then proceed with the commit review as normal# Instructions
 
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
@@ -41,9 +45,13 @@ D  path/to/deleted
 R  {old/path -> new/path}
 
 ## Proposed Commit Message
+
 <summary line>
-[- bullet if needed]
-[- bullet if needed]
+
+    [- bullet if needed]
+    [- bullet if needed]
+
+----
 
 Proceed? ([y]es / [n]o)
 ```
