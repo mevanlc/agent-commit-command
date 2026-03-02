@@ -15,6 +15,23 @@ set -euo pipefail
 # diff to a temp file if needed to keep instructions visible.
 MAX_OUTPUT_CHARS=28000  # Leave some margin below 30000
 
+# === GLOBAL INSTRUCTIONS (ALL PATHS) ===
+
+GLOBAL_INSTRUCTIONS_SECTION="$(
+  cat <<'EOF'
+## Global Instructions
+
+- Do not push without the user's clear and affirmative instruction to do so
+
+EOF
+  printf '__END__'
+)"
+GLOBAL_INSTRUCTIONS_SECTION="${GLOBAL_INSTRUCTIONS_SECTION%__END__}"
+
+emit_global_instructions() {
+  printf '%s' "$GLOBAL_INSTRUCTIONS_SECTION"
+}
+
 # === --write-config HANDLING ===
 
 if [[ "${1:-}" == "--write-config" ]]; then
@@ -56,6 +73,9 @@ if [[ -z "$MODE" ]]; then
 
 The user invoked `/commit` without a required mode. Please inform them:
 
+EOF
+  emit_global_instructions
+  cat <<'EOF'
 **Usage:** `/commit <mode> [additional instructions]`
 
 **Modes:**
@@ -81,6 +101,9 @@ case "$MODE" in
     cat <<'EOF'
 Please inform them:
 
+EOF
+    emit_global_instructions
+    cat <<'EOF'
 **Valid modes:** `--staged`, `--all`, `--ask`
 
 **Examples:**
@@ -152,6 +175,7 @@ run_hooks_for() {
 # Run preflight hooks
 PREFLIGHT_OUTPUT=""
 if ! PREFLIGHT_OUTPUT="$(run_hooks_for preflight)"; then
+  emit_global_instructions
   [[ -n "$PREFLIGHT_OUTPUT" ]] && echo "$PREFLIGHT_OUTPUT"
   exit 1
 fi
@@ -282,6 +306,9 @@ if [[ "$MODE" == "--staged" ]]; then
     cat <<'EOF'
 # Git Commit - Staged Only Mode
 
+EOF
+    emit_global_instructions
+    cat <<'EOF'
 Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 EOF
@@ -296,6 +323,9 @@ EOF
     cat <<'EOF'
 # Git Commit - Staged Only Mode
 
+EOF
+    emit_global_instructions
+    cat <<'EOF'
 # Nothing Staged - STOP
 
 EOF
@@ -316,7 +346,7 @@ EOF
     # Too many lines - use the original "discuss with user" approach
     OUTPUT_HEADER="# Git Commit - Staged Only Mode
 
-Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+${GLOBAL_INSTRUCTIONS_SECTION}Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 "
     [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
@@ -361,7 +391,7 @@ Stop and warn if staged files include:
   # Compose full output to measure size
   OUTPUT_HEADER="# Git Commit - Staged Only Mode
 
-Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+${GLOBAL_INSTRUCTIONS_SECTION}Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 "
   [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
@@ -425,6 +455,9 @@ if [[ "$MODE" == "--all" ]]; then
     cat <<'EOF'
 # Git Commit - Stage All Mode
 
+EOF
+    emit_global_instructions
+    cat <<'EOF'
 Stage all outstanding changes, then commit.
 
 EOF
@@ -439,6 +472,9 @@ EOF
     cat <<'EOF'
 # Git Commit - Stage All Mode
 
+EOF
+    emit_global_instructions
+    cat <<'EOF'
 # No Changes - STOP
 
 Working tree is clean. Nothing to commit. Inform the user.
@@ -484,7 +520,7 @@ EOF
   if [[ $DIFF_LINES -gt 8000 ]]; then
     OUTPUT_HEADER="# Git Commit - Stage All Mode
 
-Stage all outstanding changes, then commit.
+${GLOBAL_INSTRUCTIONS_SECTION}Stage all outstanding changes, then commit.
 
 "
     [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
@@ -537,7 +573,7 @@ Stop and warn if changes include:
   # Compose full output to measure size
   OUTPUT_HEADER="# Git Commit - Stage All Mode
 
-Stage all outstanding changes, then commit.
+${GLOBAL_INSTRUCTIONS_SECTION}Stage all outstanding changes, then commit.
 
 "
   [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
@@ -607,6 +643,9 @@ if [[ "$MODE" == "--ask" ]]; then
   cat <<'EOF'
 # Git Commit - Interactive Mode
 
+EOF
+  emit_global_instructions
+  cat <<'EOF'
 Help the user decide what to stage and commit.
 
 EOF

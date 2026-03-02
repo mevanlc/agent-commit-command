@@ -1,5 +1,9 @@
 # Git Commit - Stage All Mode
 
+## Global Instructions
+
+- Do not push without the user's clear and affirmative instruction to do so
+
 Stage all outstanding changes, then commit.
 
 Branch: `main`
@@ -29,7 +33,7 @@ The diff has been saved to: `/tmp/commit-tool-diff-PID.txt`
 
 **Instructions for reviewing the diff:**
 1. Use the Read tool to examine the diff file (you may need to read it in chunks using offset/limit if it's very large)
-2. After you have fully reviewed the diff, delete the temp file
+2. After you have fully reviewed the diff, you MUST delete the diff temp file for privacy and cleanliness.
 3. Then proceed with the commit review as normal# Instructions
 
 Changes are already staged. Review and confirm:
@@ -48,9 +52,13 @@ D  path/to/deleted
 R  {old/path -> new/path}
 
 ## Proposed Commit Message
+
 <summary line>
-[- bullet if needed]
-[- bullet if needed]
+
+    [- bullet if needed]
+    [- bullet if needed]
+
+----
 
 Proceed? ([y]es / [n]o)
 ```

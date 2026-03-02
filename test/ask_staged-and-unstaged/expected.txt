@@ -1,5 +1,9 @@
 # Git Commit - Interactive Mode
 
+## Global Instructions
+
+- Do not push without the user's clear and affirmative instruction to do so
+
 Help the user decide what to stage and commit.
 
 Branch: `main`
@@ -43,9 +47,13 @@ D  path/to/deleted
 R  {old/path -> new/path}
 
 ## Proposed Commit Message
+
 <summary line>
-[- bullet if needed]
-[- bullet if needed]
+
+    [- bullet if needed]
+    [- bullet if needed]
+
+----
 
 Proceed? ([y]es / [n]o)
 ```
