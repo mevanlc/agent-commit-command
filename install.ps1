@@ -33,8 +33,8 @@ function Write-Usage {
   Write-Host '  ./install.ps1 -Codex -Claude [-Hooks] [-Check]'
   Write-Host ''
   Write-Host 'Options:'
-  Write-Host '  -Codex    Symlink .md slash commands into ~/.codex/prompts/'
-  Write-Host '  -Claude   Symlink .md slash commands into ~/.claude/commands/'
+  Write-Host '  -Codex    Symlink Codex skill directories into ~/.codex/skills/'
+  Write-Host '  -Claude   Symlink Claude slash-command .md files into ~/.claude/commands/'
   Write-Host '  -Hooks    Also set up preflight hooks in the config directory'
   Write-Host '  -Check    Dry-run: show what would happen without making changes'
   Write-Host ''
@@ -239,15 +239,15 @@ if ($Hooks) {
   }
 }
 
-# === CODEX .md SYMLINKS ===
+# === CODEX SKILL SYMLINKS ===
 
 if ($Codex) {
-  $CodexDir = Join-Path $HomeDir '.codex' 'prompts'
+  $CodexDir = Join-Path $HomeDir '.codex' 'skills'
   if (-not $Check) {
     New-Item -ItemType Directory -Force -Path $CodexDir | Out-Null
   }
 
-  Get-ChildItem -LiteralPath (Join-Path $ScriptDir 'codex' 'commands') -Filter '*.md' -File -ErrorAction Stop | ForEach-Object {
+  Get-ChildItem -LiteralPath (Join-Path $ScriptDir 'codex' 'skills') -Directory -ErrorAction Stop | ForEach-Object {
     Ensure-Symlink -LinkPath (Join-Path $CodexDir $_.Name) -Target $_.FullName
   }
 }

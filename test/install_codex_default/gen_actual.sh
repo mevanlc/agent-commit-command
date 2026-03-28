@@ -9,7 +9,7 @@ mkdir -p "$HOME"
 
 "${PROJECT_DIR}/install.sh" --codex >/dev/null
 
-# List what was created under .codex (should be symlinks to .md files)
+# List what was created under .codex (should be skill directory symlinks)
 {
   echo "=== .codex ==="
   cd "${HOME}/.codex"

@@ -3,7 +3,7 @@
 #
 # Installs shared code to ~/.local/share/agent-commit-command/ (or creates
 # a symlink there pointing to this repo), seeds default configs to
-# ~/.config/agent-commit-command/, and symlinks slash-command .md files
+# ~/.config/agent-commit-command/, and symlinks Codex skills / Claude commands
 # into the appropriate CLI directories.
 #
 # Usage:
@@ -12,8 +12,8 @@
 # At least one of --codex or --claude is required (both may be given).
 #
 # Options:
-#   --codex    Symlink slash-command .md files into ~/.codex/prompts/
-#   --claude   Symlink slash-command .md files into ~/.claude/commands/
+#   --codex    Symlink Codex skill directories into ~/.codex/skills/
+#   --claude   Symlink Claude slash-command .md files into ~/.claude/commands/
 #   --hooks    Also set up hooks in the config directory
 #   --check    Dry-run: show what would be installed without making changes
 
@@ -37,8 +37,8 @@ Usage:
   ./install.sh --codex --claude [--hooks] [--check]
 
 Options:
-  --codex    Symlink .md slash commands into ~/.codex/prompts/
-  --claude   Symlink .md slash commands into ~/.claude/commands/
+  --codex    Symlink Codex skill directories into ~/.codex/skills/
+  --claude   Symlink Claude slash-command .md files into ~/.claude/commands/
   --hooks    Also set up preflight hooks in the config directory
   --check    Dry-run: show what would happen without making changes
 
@@ -205,17 +205,17 @@ if [[ "$INSTALL_HOOKS" == "1" ]]; then
   done
 fi
 
-# === CODEX .md SYMLINKS ===
+# === CODEX SKILL SYMLINKS ===
 
 if [[ "$INSTALL_CODEX" == "1" ]]; then
-  CODEX_DIR="${HOME}/.codex/prompts"
+  CODEX_DIR="${HOME}/.codex/skills"
   if [[ "$CHECK_ONLY" == "0" ]]; then
     mkdir -p "$CODEX_DIR"
   fi
 
-  for md in "${SCRIPT_DIR}/codex/commands"/*.md; do
-    [[ -f "$md" ]] || continue
-    ensure_symlink "${CODEX_DIR}/$(basename "$md")" "$md"
+  for skill_dir in "${SCRIPT_DIR}/codex/skills"/*; do
+    [[ -d "$skill_dir" ]] || continue
+    ensure_symlink "${CODEX_DIR}/$(basename "$skill_dir")" "$skill_dir"
   done
 fi
 

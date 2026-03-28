@@ -3,7 +3,7 @@
 Git commit helper for AI coding CLIs (Codex CLI + Claude Code).
 
 This repo provides:
-- Slash command prompt files (`/commit`, `/gdf-commit`)
+- Codex skills (`$commit`, `$gdf-commit`) and Claude slash commands (`/commit`, `/gdf-commit`)
 - A shared bash helper, `commit-tool/commit-tool.sh`, that prints a structured **Commit Review** workflow and requires explicit user confirmation before committing
 - Optional preflight hooks (for example, identity checks)
 
@@ -12,8 +12,8 @@ This repo provides:
 The installers:
 - Symlink `~/.local/share/agent-commit-command` to this repo (or fail if that path exists as a non-symlink directory)
 - Seed defaults into `~/.config/agent-commit-command/` (never overwrites existing config)
-- Symlink command `.md` files into:
-  - Codex CLI: `~/.codex/prompts/`
+- Symlink command artifacts into:
+  - Codex CLI: `~/.codex/skills/`
   - Claude Code: `~/.claude/commands/`
 
 ### macOS/Linux (bash)
@@ -36,17 +36,28 @@ Notes:
 
 ## Usage
 
-After installation, run these in your agent CLI:
+After installation, use these in your agent CLI:
+
+Codex:
 
 ```text
-/commit --staged [additional instructions...]
-/commit --all [additional instructions...]
-/commit --ask [additional instructions...]
+$commit --staged [additional instructions...]
+$commit --all [additional instructions...]
+$commit --ask [additional instructions...]
 ```
 
 If you use a `gdf` git wrapper and want *all* git operations to go through it:
 
 ```text
+$gdf-commit --staged|--all|--ask [additional instructions...]
+```
+
+Claude:
+
+```text
+/commit --staged [additional instructions...]
+/commit --all [additional instructions...]
+/commit --ask [additional instructions...]
 /gdf-commit --staged|--all|--ask [additional instructions...]
 ```
 
