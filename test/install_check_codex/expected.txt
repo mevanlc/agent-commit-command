@@ -4,7 +4,7 @@
   SEED  /HOME/.config/agent-commit-command/commit-tool.config  (from /REPO/defaults/commit-tool.config)
   CREATE  /HOME/.config/agent-commit-command/hooks/hook-preflight-01-id-check.sh  (symlink -> /REPO/commit-tool/hooks-available/hook-preflight-01-id-check.sh)
   SEED  /HOME/.config/agent-commit-command/hooks/hook-preflight-01-id-check.config  (from /REPO/defaults/hooks/hook-preflight-01-id-check.config)
-  CREATE  /HOME/.codex/prompts/commit.md  (symlink -> /REPO/codex/commands/commit.md)
-  CREATE  /HOME/.codex/prompts/gdf-commit.md  (symlink -> /REPO/codex/commands/gdf-commit.md)
+  CREATE  /HOME/.codex/skills/commit  (symlink -> /REPO/codex/skills/commit)
+  CREATE  /HOME/.codex/skills/gdf-commit  (symlink -> /REPO/codex/skills/gdf-commit)
 
 Run without --check to apply these changes.

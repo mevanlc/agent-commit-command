@@ -1,0 +1,4 @@
+interface:
+  display_name: "Commit"
+  short_description: "Run the Git commit review helper"
+  default_prompt: "Use $commit to run the commit review helper, require an explicit mode such as --staged, --all, or --ask, and wait for user confirmation before creating the commit."

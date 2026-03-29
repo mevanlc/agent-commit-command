@@ -1,6 +1,6 @@
 === .codex ===
-./prompts/commit.md -> codex/commands/commit.md
-./prompts/gdf-commit.md -> codex/commands/gdf-commit.md
+./skills/commit -> codex/skills/commit
+./skills/gdf-commit -> codex/skills/gdf-commit
 === .config ===
 ./commit-tool.config
 ./hooks/hook-preflight-01-id-check.config

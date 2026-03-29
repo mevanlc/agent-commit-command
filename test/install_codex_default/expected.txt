@@ -1,6 +1,6 @@
 === .codex ===
-./prompts/commit.md -> codex/commands/commit.md
-./prompts/gdf-commit.md -> codex/commands/gdf-commit.md
+./skills/commit -> codex/skills/commit
+./skills/gdf-commit -> codex/skills/gdf-commit
 === .local/share ===
 agent-commit-command -> (repo root)
 === .config ===
