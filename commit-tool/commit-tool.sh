@@ -32,6 +32,26 @@ emit_global_instructions() {
   printf '%s' "$GLOBAL_INSTRUCTIONS_SECTION"
 }
 
+temp_dir() {
+  if [[ -n "${TMPDIR:-}" ]]; then
+    printf '%s\n' "${TMPDIR%/}"
+    return
+  fi
+
+  if [[ -n "${PREFIX:-}" && -d "${PREFIX%/}/tmp" ]]; then
+    printf '%s\n' "${PREFIX%/}/tmp"
+    return
+  fi
+
+  printf '%s\n' /tmp
+}
+
+make_temp_file() {
+  local stem="$1"
+  local suffix="$2"
+  mktemp "$(temp_dir)/${stem}.XXXXXX${suffix}"
+}
+
 # === --write-config HANDLING ===
 
 if [[ "${1:-}" == "--write-config" ]]; then
@@ -436,7 +456,7 @@ Stop and warn if staged files include:
 
   if [[ $CHAR_COUNT -gt $MAX_OUTPUT_CHARS ]]; then
     # Externalize diff to file
-    DIFF_FILE="/tmp/commit-tool-diff-$$.txt"
+    DIFF_FILE="$(make_temp_file commit-tool-diff .txt)"
     echo "$STAGED_DIFF" > "$DIFF_FILE"
     DIFF_CHAR_COUNT=${#STAGED_DIFF}
     OUTPUT_DIFF_EXTERNAL=$(compose_diff_external "$DIFF_FILE" "$DIFF_CHAR_COUNT")
@@ -483,9 +503,9 @@ EOF
     exit 0
   fi
 
-	# Save current staged state, then stage everything
-	  BACKUP_PATCH="/tmp/commit-tool-staged-backup-$$.patch"
-	  $GIT_CMD diff --cached > "$BACKUP_PATCH" 2>/dev/null || true
+		# Save current staged state, then stage everything
+		  BACKUP_PATCH="$(make_temp_file commit-tool-staged-backup .patch)"
+		  $GIT_CMD diff --cached > "$BACKUP_PATCH" 2>/dev/null || true
 	  BACKUP_HAS_CONTENT=0
 	  [[ -s "$BACKUP_PATCH" ]] && BACKUP_HAS_CONTENT=1
 
@@ -626,7 +646,7 @@ Stop and warn if changes include:
 
   if [[ $CHAR_COUNT -gt $MAX_OUTPUT_CHARS ]]; then
     # Externalize diff to file
-    DIFF_FILE="/tmp/commit-tool-diff-$$.txt"
+    DIFF_FILE="$(make_temp_file commit-tool-diff .txt)"
     echo "$ALL_DIFF" > "$DIFF_FILE"
     DIFF_CHAR_COUNT=${#ALL_DIFF}
     OUTPUT_DIFF_EXTERNAL=$(compose_diff_external "$DIFF_FILE" "$DIFF_CHAR_COUNT")
