@@ -49,7 +49,9 @@ temp_dir() {
 make_temp_file() {
   local stem="$1"
   local suffix="$2"
-  mktemp "$(temp_dir)/${stem}.XXXXXX${suffix}"
+  # suffix goes BEFORE the X's — macOS mktemp only randomizes
+  # trailing X's (uses mkstemp, not mkstemps).
+  mktemp "$(temp_dir)/${stem}${suffix}.XXXXXX"
 }
 
 # === --write-config HANDLING ===
