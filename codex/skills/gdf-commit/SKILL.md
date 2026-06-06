@@ -1,6 +1,6 @@
 ---
 name: gdf-commit
-description: Git commit helper that runs `commit-tool.sh` with the `gdf` base command, produces a structured Commit Review, and requires explicit user confirmation before creating the commit. Use when the user wants all git operations in this workflow to go through `gdf` instead of raw `git`.
+description: Git commit helper. Use only when explicitly invoked.
 ---
 
 # Gdf Commit

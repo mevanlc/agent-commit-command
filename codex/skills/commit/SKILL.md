@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Git commit helper that runs `commit-tool.sh` with the `git` base command, produces a structured Commit Review, and requires explicit user confirmation before creating the commit. Use when the user wants to commit staged changes, all changes, or wants the helper to guide the scope choice with `--ask`.
+description: Git commit helper. Use only when explicitly invoked.
 ---
 
 # Commit
