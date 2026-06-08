@@ -42,6 +42,7 @@ Build `<derived args>` from the actual user request. Include the chosen mode fir
 5. If it says `STOP`, stop and help the user resolve the issue first.
 6. Present the requested Commit Review and wait for explicit user confirmation before running any commit command.
 7. If confirmed, perform the commit exactly as instructed and show the resulting commit hash.
+8. If the helper requests heredoc-based commit input, put only the commit message in the heredoc and run the hash command (`gdf rev-parse HEAD` here) in a separate shell command.
 
 ## Windows
 
