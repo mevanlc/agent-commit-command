@@ -66,8 +66,10 @@ Proceed? ([y]es / [n]o)
 ```
 
 Wait for user confirmation before committing.
-4. If confirmed: commit using HEREDOC format, then show resulting hash
-5. If declined: run `git read-tree --empty` to restore previous staging
+4. If confirmed: commit using HEREDOC format
+5. If the commit was uneventful, report only: `Completed successfully.`
+6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
+7. If declined: run `git read-tree --empty` to restore previous staging
 
 # Safety Checks
 

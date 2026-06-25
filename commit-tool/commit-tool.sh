@@ -398,7 +398,8 @@ $STAGED_STATUS
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
 4. If confirmed: commit using HEREDOC format
-5. Show resulting commit hash
+5. If the commit was uneventful, report only: \`Completed successfully.\`
+6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
 
 # Safety Checks
 
@@ -444,7 +445,8 @@ $STAGED_STATUS
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
 4. If confirmed: commit using HEREDOC format
-5. Show resulting commit hash
+5. If the commit was uneventful, report only: \`Completed successfully.\`
+6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
 
 # Safety Checks
 
@@ -578,8 +580,10 @@ Changes are already staged. Review and confirm:
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
-4. If confirmed: commit using HEREDOC format, then show resulting hash
-5. If declined: run \`$RESTORE_STAGING_CMD\` to restore previous staging
+4. If confirmed: commit using HEREDOC format
+5. If the commit was uneventful, report only: \`Completed successfully.\`
+6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
+7. If declined: run \`$RESTORE_STAGING_CMD\` to restore previous staging
 
 # Safety Checks
 
@@ -632,8 +636,10 @@ Changes are already staged. Review and confirm:
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
-4. If confirmed: commit using HEREDOC format, then show resulting hash
-5. If declined: run \`$RESTORE_STAGING_CMD\` to restore previous staging
+4. If confirmed: commit using HEREDOC format
+5. If the commit was uneventful, report only: \`Completed successfully.\`
+6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
+7. If declined: run \`$RESTORE_STAGING_CMD\` to restore previous staging
 
 # Safety Checks
 
@@ -722,7 +728,8 @@ EOF
   printf '6. %s\n' "$COMMIT_REVIEW_FORMAT"
   cat <<'EOF'
 7. If confirmed: commit using HEREDOC format
-8. Show resulting commit hash
+8. If the commit was uneventful, report only: `Completed successfully.`
+9. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
 
 # Safety Checks
 

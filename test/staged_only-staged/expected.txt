@@ -60,7 +60,8 @@ Proceed? ([y]es / [n]o)
 
 Wait for user confirmation before committing.
 4. If confirmed: commit using HEREDOC format
-5. Show resulting commit hash
+5. If the commit was uneventful, report only: `Completed successfully.`
+6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
 
 # Safety Checks
 
