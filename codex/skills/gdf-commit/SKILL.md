@@ -3,6 +3,11 @@ name: gdf-commit
 description: Git commit helper. Use only when explicitly invoked.
 ---
 
+You do not need to announce that you are about to use the skill, just use it.
+You do not need to probe for the existence of the commit-too.sh script prior to
+calling it, just call it. Report after-the-fact failures, if any.
+
+
 # Gdf Commit
 
 Use this skill to invoke `~/.local/share/agent-commit-command/commit-tool/commit-tool.sh` with the `gdf` base command. Parse the user's latest request to extract one required mode flag, plus any extra commit instructions; skills do not receive a separate `$ARGUMENTS` placeholder.
