@@ -21,6 +21,8 @@ GLOBAL_INSTRUCTIONS_SECTION="$(
   cat <<'EOF'
 ## Global Instructions
 
+- You do not need to acknowledge that you are going to use the tool or the skill -- just use it
+- You do not need to check for the presence of commit-tool.sh -- just call it -- report any after-the-fact failures
 - Do not push without the user's clear and affirmative instruction to do so
 
 EOF
