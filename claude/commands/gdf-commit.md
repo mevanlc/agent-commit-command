@@ -1,6 +1,6 @@
 ---
 name: gdf-commit
-description: Git commit helper (using gdf wrapper). Use only when explicitly invoked.
+description: Git commit helper (using gdf wrapper). Use only when explicitly invoked. Do not consult memories.
 argument-hint: --<staged|all|ask> [additional instructions]
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Git commit helper. Use only when explicitly invoked.
+description: Git commit helper. Use only when explicitly invoked. Do not consult memories.
 ---
 
 You do not need to announce that you are about to use the skill, just use it.
