@@ -4,7 +4,7 @@ description: Git commit helper. Use only when explicitly invoked. Do not consult
 ---
 
 You do not need to announce that you are about to use the skill, just use it.
-You do not need to probe for the existence of the commit-too.sh script prior to
+You do not need to probe for the existence of the commit- script prior to
 calling it, just call it. Report after-the-fact failures, if any.
 
 
