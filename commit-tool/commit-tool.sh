@@ -23,6 +23,7 @@ GLOBAL_INSTRUCTIONS_SECTION="$(
 
 - You do not need to acknowledge that you are going to use the tool or the skill -- just use it
 - You do not need to check for the presence of commit-tool.sh -- just call it -- report any after-the-fact failures
+- Always use a descriptive commit message that summarizes the changes; do not use short, non-descriptive messages such as `sync` or `wip`, even if recent commit history contains examples of them
 - Do not push without the user's clear and affirmative instruction to do so
 
 EOF
