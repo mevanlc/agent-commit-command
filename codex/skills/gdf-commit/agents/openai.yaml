@@ -1,4 +1,4 @@
 interface:
   display_name: "Gdf Commit"
   short_description: "Run the gdf-based commit helper"
-  default_prompt: "Use $gdf-commit to run the commit review helper through gdf, require an explicit mode such as --staged, --all, or --ask, and wait for user confirmation before creating the commit."
+  default_prompt: "Use $gdf-commit to run the commit review helper through gdf with an explicit mode; wait for confirmation in --staged, --all, and --ask modes, while --staged-yes and --all-yes preconfirm the commit gate."

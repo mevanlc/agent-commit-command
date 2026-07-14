@@ -2,7 +2,7 @@
 # commit-tool.sh - Unified commit helper for Claude Code slash commands
 # Usage: commit-tool.sh <git-cmd> "<mode> [additional-instructions...]"
 #   git-cmd: "git" or "gdf" (or other git wrapper)
-#   mode: --staged, --all, or --ask
+#   mode: --staged, --staged-yes, --all, --all-yes, or --ask
 #   Note: arg2 is a single quoted string; mode is split from the first word
 
 set -euo pipefail
@@ -33,6 +33,8 @@ GLOBAL_INSTRUCTIONS_SECTION="${GLOBAL_INSTRUCTIONS_SECTION%__END__}"
 
 emit_global_instructions() {
   printf '%s' "$GLOBAL_INSTRUCTIONS_SECTION"
+  [[ -n "${PRECONFIRMED_MODE_SECTION:-}" ]] && printf '%s' "$PRECONFIRMED_MODE_SECTION"
+  true  # avoid set -e exit when the preconfirmed-mode section is empty
 }
 
 temp_dir() {
@@ -89,6 +91,8 @@ fi
 GIT_CMD="${1:-git}"
 # Split arg2: first word is MODE, rest is EXTRA_INSTRUCTIONS
 read -r MODE EXTRA_INSTRUCTIONS <<< "${2:-}"
+BASE_MODE="$MODE"
+PRECONFIRMED_MODE=0
 
 # === INVALID MODE HANDLING ===
 
@@ -105,13 +109,17 @@ EOF
 
 **Modes:**
 - `--staged` - Commit exactly what's staged (ignores unstaged changes)
+- `--staged-yes` - Commit exactly what's staged without waiting at the commit gate
 - `--all` - Stage all modifications, then commit
+- `--all-yes` - Stage all modifications and commit without waiting at the commit gate
 - `--ask` - Interactively decide what to stage
 
 **Examples:**
 ```
 /commit --staged
+/commit --staged-yes
 /commit --all fix the auth routes
+/commit --all-yes update the documentation
 /commit --ask
 ```
 EOF
@@ -120,6 +128,14 @@ fi
 
 case "$MODE" in
   --staged|--all|--ask) ;;
+  --staged-yes)
+    BASE_MODE="--staged"
+    PRECONFIRMED_MODE=1
+    ;;
+  --all-yes)
+    BASE_MODE="--all"
+    PRECONFIRMED_MODE=1
+    ;;
   *)
     printf '# Invalid Invocation - Unknown Mode\n\n'
     printf 'The user provided an unrecognized mode: `%s`\n\n' "$MODE"
@@ -129,18 +145,56 @@ Please inform them:
 EOF
     emit_global_instructions
     cat <<'EOF'
-**Valid modes:** `--staged`, `--all`, `--ask`
+**Valid modes:** `--staged`, `--staged-yes`, `--all`, `--all-yes`, `--ask`
 
 **Examples:**
 ```
 /commit --staged
+/commit --staged-yes
 /commit --all fix the auth routes
+/commit --all-yes update the documentation
 /commit --ask
 ```
 EOF
     exit 0
     ;;
 esac
+
+read -r FIRST_EXTRA_ARG _ <<< "$EXTRA_INSTRUCTIONS"
+if [[ "$FIRST_EXTRA_ARG" == "--yes" ]]; then
+  cat <<'EOF'
+# Invalid Invocation - Separate --yes Modifier
+
+`--yes` is not a standalone modifier. Please inform the user:
+
+EOF
+  emit_global_instructions
+  cat <<'EOF'
+- Use `--staged-yes` instead of `--staged --yes`
+- Use `--all-yes` instead of `--all --yes`
+- `--ask` is always interactive and cannot be combined with `--yes`
+EOF
+  exit 0
+fi
+
+PRECONFIRMED_MODE_SECTION=""
+if [[ "$PRECONFIRMED_MODE" -eq 1 ]]; then
+  PRECONFIRMED_MODE_SECTION="$({
+    cat <<'EOF'
+## Preconfirmed Mode
+
+- The user explicitly selected `--staged-yes` or `--all-yes`, so the `y/n` commit gate is preanswered `y`
+- Still present the Commit Review, then commit immediately without waiting for the user to reply
+- Be slightly more wary of unusual files and similar concerns because the user will not have an opportunity to decline the commit
+- If you find such a concern, drop out of preconfirmed mode and resolve it interactively with the user. Once dropped, do not re-enter preconfirmed mode; use the ordinary `y/n` commit gate before committing
+- If a pre-commit hook rejects the commit for a mechanical, low-risk issue, you may fix it and retry while preconfirmed mode remains engaged
+- For a more substantial pre-commit hook issue, drop out of preconfirmed mode and involve the user interactively
+
+EOF
+    printf '__END__'
+  })"
+  PRECONFIRMED_MODE_SECTION="${PRECONFIRMED_MODE_SECTION%__END__}"
+fi
 
 # === LOAD CONFIG ===
 
@@ -220,7 +274,36 @@ CONFLICTS=$($GIT_CMD diff --name-only --diff-filter=U 2>/dev/null || true)
 
 # === SHARED INSTRUCTION BLOCKS ===
 
-COMMIT_REVIEW_FORMAT='Present a **Commit Review** to the user in this exact format:
+if [[ "$PRECONFIRMED_MODE" -eq 1 ]]; then
+  COMMIT_REVIEW_FORMAT='Present a **Commit Review** to the user in this exact format:
+
+```
+# Commit Review
+
+## Paths
+M  path/to/modified
+A  path/to/added
+D  path/to/deleted
+R  {old/path -> new/path}
+
+## Proposed Commit Message
+
+<summary line>
+
+    [- bullet if needed]
+    [- bullet if needed]
+
+----
+
+Proceeding automatically (preconfirmed mode)
+```
+
+After presenting the review, commit immediately without waiting for a reply.'
+  COMMIT_ACTION='Commit immediately without waiting for user confirmation, using HEREDOC format'
+  STAGED_REVIEW_INTRO='Changes are already staged. Review before committing:'
+  DECLINE_CONDITION='If preconfirmed mode is dropped and the user then declines'
+else
+  COMMIT_REVIEW_FORMAT='Present a **Commit Review** to the user in this exact format:
 
 ```
 # Commit Review
@@ -244,6 +327,10 @@ Proceed? ([y]es / [n]o)
 ```
 
 Wait for user confirmation before committing.'
+  COMMIT_ACTION='If confirmed: commit using HEREDOC format'
+  STAGED_REVIEW_INTRO='Changes are already staged. Review and confirm:'
+  DECLINE_CONDITION='If declined'
+fi
 
 # === BUILD REPORT SECTIONS ===
 
@@ -325,7 +412,7 @@ emit_conflicts_block() {
 
 # === MODE: --staged ===
 
-if [[ "$MODE" == "--staged" ]]; then
+if [[ "$BASE_MODE" == "--staged" ]]; then
   # Check early exit conditions first (these output directly and exit)
   if [[ -n "$CONFLICTS" ]]; then
     cat <<'EOF'
@@ -371,7 +458,7 @@ EOF
     # Too many lines - use the original "discuss with user" approach
     OUTPUT_HEADER="# Git Commit - Staged Only Mode
 
-${GLOBAL_INSTRUCTIONS_SECTION}Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 "
     [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
@@ -400,7 +487,7 @@ $STAGED_STATUS
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
-4. If confirmed: commit using HEREDOC format
+4. $COMMIT_ACTION
 5. If the commit was uneventful, report only: \`Completed successfully.\`
 6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
 
@@ -417,7 +504,7 @@ Stop and warn if staged files include:
   # Compose full output to measure size
   OUTPUT_HEADER="# Git Commit - Staged Only Mode
 
-${GLOBAL_INSTRUCTIONS_SECTION}Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 "
   [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
@@ -447,7 +534,7 @@ $STAGED_STATUS
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
-4. If confirmed: commit using HEREDOC format
+4. $COMMIT_ACTION
 5. If the commit was uneventful, report only: \`Completed successfully.\`
 6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
 
@@ -476,7 +563,7 @@ fi
 
 # === MODE: --all ===
 
-if [[ "$MODE" == "--all" ]]; then
+if [[ "$BASE_MODE" == "--all" ]]; then
   # Check early exit conditions first
   if [[ -n "$CONFLICTS" ]]; then
     cat <<'EOF'
@@ -547,7 +634,7 @@ EOF
   if [[ $DIFF_LINES -gt 8000 ]]; then
     OUTPUT_HEADER="# Git Commit - Stage All Mode
 
-${GLOBAL_INSTRUCTIONS_SECTION}Stage all outstanding changes, then commit.
+${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}Stage all outstanding changes, then commit.
 
 "
     [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
@@ -578,15 +665,15 @@ $STAGED_STATUS
 
     OUTPUT_INSTRUCTIONS="# Instructions
 
-Changes are already staged. Review and confirm:
+$STAGED_REVIEW_INTRO
 
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
-4. If confirmed: commit using HEREDOC format
+4. $COMMIT_ACTION
 5. If the commit was uneventful, report only: \`Completed successfully.\`
 6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
-7. If declined: run \`$RESTORE_STAGING_CMD\` to restore previous staging
+7. $DECLINE_CONDITION: run \`$RESTORE_STAGING_CMD\` to restore previous staging
 
 # Safety Checks
 
@@ -602,7 +689,7 @@ Stop and warn if changes include:
   # Compose full output to measure size
   OUTPUT_HEADER="# Git Commit - Stage All Mode
 
-${GLOBAL_INSTRUCTIONS_SECTION}Stage all outstanding changes, then commit.
+${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}Stage all outstanding changes, then commit.
 
 "
   [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
@@ -634,15 +721,15 @@ $STAGED_STATUS
 
   OUTPUT_INSTRUCTIONS="# Instructions
 
-Changes are already staged. Review and confirm:
+$STAGED_REVIEW_INTRO
 
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
-4. If confirmed: commit using HEREDOC format
+4. $COMMIT_ACTION
 5. If the commit was uneventful, report only: \`Completed successfully.\`
 6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
-7. If declined: run \`$RESTORE_STAGING_CMD\` to restore previous staging
+7. $DECLINE_CONDITION: run \`$RESTORE_STAGING_CMD\` to restore previous staging
 
 # Safety Checks
 
@@ -670,7 +757,7 @@ fi
 
 # === MODE: --ask ===
 
-if [[ "$MODE" == "--ask" ]]; then
+if [[ "$BASE_MODE" == "--ask" ]]; then
   cat <<'EOF'
 # Git Commit - Interactive Mode
 
@@ -729,8 +816,8 @@ EOF
 5. Generate a commit message (imperative summary, optional bullets)
 EOF
   printf '6. %s\n' "$COMMIT_REVIEW_FORMAT"
+  printf '7. %s\n' "$COMMIT_ACTION"
   cat <<'EOF'
-7. If confirmed: commit using HEREDOC format
 8. If the commit was uneventful, report only: `Completed successfully.`
 9. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
 

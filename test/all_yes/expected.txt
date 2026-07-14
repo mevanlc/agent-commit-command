@@ -1,0 +1,94 @@
+# Git Commit - Stage All Mode
+
+## Global Instructions
+
+- You do not need to acknowledge that you are going to use the tool or the skill -- just use it
+- You do not need to check for the presence of commit-tool.sh -- just call it -- report any after-the-fact failures
+- Always use a descriptive commit message that summarizes the changes; do not use short, non-descriptive messages such as `sync` or `wip`, even if recent commit history contains examples of them
+- Do not push without the user's clear and affirmative instruction to do so
+
+## Preconfirmed Mode
+
+- The user explicitly selected `--staged-yes` or `--all-yes`, so the `y/n` commit gate is preanswered `y`
+- Still present the Commit Review, then commit immediately without waiting for the user to reply
+- Be slightly more wary of unusual files and similar concerns because the user will not have an opportunity to decline the commit
+- If you find such a concern, drop out of preconfirmed mode and resolve it interactively with the user. Once dropped, do not re-enter preconfirmed mode; use the ordinary `y/n` commit gate before committing
+- If a pre-commit hook rejects the commit for a mechanical, low-risk issue, you may fix it and retry while preconfirmed mode remains engaged
+- For a more substantial pre-commit hook issue, drop out of preconfirmed mode and involve the user interactively
+
+Stage all outstanding changes, then commit.
+
+# Additional Instructions from User
+update docs
+
+Branch: `main`
+Identity: `Test User <test@example.com>`
+
+# Recent Commits
+```
+HASH Initial commit
+```
+# Staged Changes
+
+Ran `git add -A` to stage all changes.
+
+Output of `git status --porcelain`:
+```
+M  file.txt
+```
+
+> Staging backup saved to `/tmp/commit-tool-staged-backup-PID.patch` (empty; nothing was staged before)
+> To abort: `git reset --mixed`
+
+# Diff
+
+Output of `git diff --cached`:
+```diff
+diff --git a/file.txt b/file.txt
+index HASH..HASH 100644
+--- a/file.txt
++++ b/file.txt
+@@ -1 +1,2 @@
+ initial
++modified
+```# Instructions
+
+Changes are already staged. Review before committing:
+
+1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
+2. Match the style of recent commits shown above
+3. Present a **Commit Review** to the user in this exact format:
+
+```
+# Commit Review
+
+## Paths
+M  path/to/modified
+A  path/to/added
+D  path/to/deleted
+R  {old/path -> new/path}
+
+## Proposed Commit Message
+
+<summary line>
+
+    [- bullet if needed]
+    [- bullet if needed]
+
+----
+
+Proceeding automatically (preconfirmed mode)
+```
+
+After presenting the review, commit immediately without waiting for a reply.
+4. Commit immediately without waiting for user confirmation, using HEREDOC format
+5. If the commit was uneventful, report only: `Completed successfully.`
+6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
+7. If preconfirmed mode is dropped and the user then declines: run `git reset --mixed` to restore previous staging
+
+# Safety Checks
+
+Stop and warn if changes include:
+- Secrets (`.env`, credentials, API keys, certs)
+- Large binaries that look accidental
+- Files that seem unrelated to the apparent intent

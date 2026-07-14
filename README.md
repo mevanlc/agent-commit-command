@@ -4,7 +4,7 @@ Git commit helper for AI coding CLIs (Codex CLI + Claude Code).
 
 This repo provides:
 - Codex skills (`$commit`, `$gdf-commit`) and Claude slash commands (`/commit`, `/gdf-commit`)
-- A shared bash helper, `commit-tool/commit-tool.sh`, that prints a structured **Commit Review** workflow and requires explicit user confirmation before committing
+- A shared bash helper, `commit-tool/commit-tool.sh`, that prints a structured **Commit Review** workflow and normally requires explicit user confirmation before committing
 - Optional preflight hooks (for example, identity checks)
 
 ## Install
@@ -42,24 +42,32 @@ Codex:
 
 ```text
 $commit --staged [additional instructions...]
+$commit --staged-yes [additional instructions...]
 $commit --all [additional instructions...]
+$commit --all-yes [additional instructions...]
 $commit --ask [additional instructions...]
 ```
 
 If you use a `gdf` git wrapper and want *all* git operations to go through it:
 
 ```text
-$gdf-commit --staged|--all|--ask [additional instructions...]
+$gdf-commit --staged|--staged-yes|--all|--all-yes|--ask [additional instructions...]
 ```
 
 Claude:
 
 ```text
 /commit --staged [additional instructions...]
+/commit --staged-yes [additional instructions...]
 /commit --all [additional instructions...]
+/commit --all-yes [additional instructions...]
 /commit --ask [additional instructions...]
-/gdf-commit --staged|--all|--ask [additional instructions...]
+/gdf-commit --staged|--staged-yes|--all|--all-yes|--ask [additional instructions...]
 ```
+
+The `-yes` modes still present the Commit Review, but treat its `y/n` gate as
+preanswered `y` and proceed without waiting for another reply. `--ask` always
+remains interactive.
 
 For large diffs, the helper may write the diff to a temp file under `/tmp/` to avoid CLI output truncation and will instruct you to delete it after review.
 
