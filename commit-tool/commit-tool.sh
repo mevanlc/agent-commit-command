@@ -24,6 +24,9 @@ GLOBAL_INSTRUCTIONS_SECTION="$(
 - You do not need to acknowledge that you are going to use the tool or the skill -- just use it
 - You do not need to check for the presence of commit-tool.sh -- just call it -- report any after-the-fact failures
 - Always use a descriptive commit message that summarizes the changes; do not use short, non-descriptive messages such as `sync` or `wip`, even if recent commit history contains examples of them
+- Always commit non-interactively so no editor opens: pass the message via `git commit -F -` (heredoc); for an amend use `git commit --amend --file=-`. Never run a bare `git commit` / `git commit --amend`, which can launch `vim`/`$EDITOR` and stall the session
+- If the flow is interrupted after the user has already approved, finish the exact approved commit directly with `git commit -F -` instead of restarting the review
+- After committing, confirm it landed with `git status --short` (in `--staged` mode, unstaged changes may legitimately remain)
 - Do not push without the user's clear and affirmative instruction to do so
 
 EOF
