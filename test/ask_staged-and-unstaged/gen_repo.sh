@@ -11,3 +11,4 @@ git commit -q -m "Initial commit"
 echo "staged" > staged.txt
 git add staged.txt
 echo "unstaged" >> file.txt
+echo "untracked" > untracked.txt

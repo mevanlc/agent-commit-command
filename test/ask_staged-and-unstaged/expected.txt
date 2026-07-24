@@ -26,22 +26,33 @@ Output of `git status --porcelain -u`:
 ```
  M file.txt
 A  staged.txt
+?? untracked.txt
 ```
 
 # Instructions
 
-1. **Show the user what's available to commit** - relay the status above (they can't see slash command output):
+1. **Summarize what's available to commit by status bucket** - relay the status above (they can't see slash command output):
+   - Use concise, structured `Staged changes`, `Unstaged changes`, and `Untracked files` sections for each nonempty bucket
+   - Summarize the content or purpose of related paths instead of merely repeating a long path list
    - First column: staged status (`M`=modified, `A`=added, `D`=deleted, `R`=renamed)
    - Second column: unstaged status
    - `??` = untracked file
-2. **Ask the user** what should be included in this commit:
+2. **Resolve mixed bucket state before staging**:
+   - If any two or more of the staged, unstaged, and untracked buckets are nonempty, explicitly ask whether that split reflects intended separate commits or incidental staging state
+   - Recommend one commit or a concrete split based on logical cohesion, and explain the recommendation briefly
+   - Do not infer that split status alone means either one commit or multiple commits
+3. **Audit untracked files when present**:
+   - Inspect the applicable repository `.gitignore` rules and distinguish intentional source/docs from generated output, local state, secrets, or other files that normally should not be tracked
+   - If the untracked files look intentional and the ignore rules look solid, reassure the user succinctly
+   - If any untracked files likely belong in `.gitignore`, stop and resolve those paths and proposed ignore rules with the user before staging
+4. **Ask the user** what should be included in this commit:
    - Suggest logical groupings if changes seem separable
    - If user gave additional instructions, use those as guidance
    - Offer options like "all of it", "just the staged", or specific files
-3. Stage the selected changes (`git add <files>`)
-4. **Before generating the commit review**, run `git status --porcelain -u` to refresh your view of what's staged
-5. Generate a commit message (imperative summary, optional bullets)
-6. Present a **Commit Review** to the user in this exact format:
+5. Stage the selected changes (`git add <files>`)
+6. **Before generating the commit review**, run `git status --porcelain -u` to refresh your view of what's staged
+7. Generate a commit message (imperative summary, optional bullets)
+8. Present a **Commit Review** to the user in this exact format:
 
 ```
 # Commit Review
@@ -65,9 +76,9 @@ Proceed? ([y]es / [n]o)
 ```
 
 Wait for user confirmation before committing.
-7. If confirmed: commit using HEREDOC format
-8. If the commit was uneventful, report only: `Completed successfully.`
-9. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
+9. If confirmed: commit using HEREDOC format
+10. If the commit was uneventful, report only: `Completed successfully.`
+11. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
 
 # Safety Checks
 

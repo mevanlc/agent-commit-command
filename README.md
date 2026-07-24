@@ -67,7 +67,10 @@ Claude:
 
 The `-yes` modes still present the Commit Review, but treat its `y/n` gate as
 preanswered `y` and proceed without waiting for another reply. `--ask` always
-remains interactive.
+remains interactive. It summarizes staged changes, unstaged changes, and
+untracked files separately; recommends whether mixed buckets warrant split
+commits; and checks untracked files against the repository's ignore rules before
+staging.
 
 For large diffs, the helper may write the diff to a temp file under `/tmp/` to avoid CLI output truncation and will instruct you to delete it after review.
 
