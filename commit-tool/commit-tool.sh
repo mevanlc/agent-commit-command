@@ -130,6 +130,16 @@ EOF
 fi
 
 case "$MODE" in
+  --ask-no)
+    cat <<'EOF'
+# Git Commit - Ask No Mode
+
+No.
+
+Nothing was staged. Nothing was committed. You predeclined with admirable efficiency.
+EOF
+    exit 0
+    ;;
   --staged|--all|--ask) ;;
   --staged-yes)
     BASE_MODE="--staged"

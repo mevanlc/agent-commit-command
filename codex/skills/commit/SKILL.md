@@ -20,6 +20,7 @@ Accept exactly one of:
 - `--all`
 - `--all-yes`
 - `--ask`
+- `--ask-no`
 
 If no mode is present in the user's request, ask the user to provide one.
 
