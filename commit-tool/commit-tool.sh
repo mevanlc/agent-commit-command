@@ -378,6 +378,7 @@ compose_diff_external() {
   printf 'The diff has been saved to: `%s`\n\n' "$diff_file"
   cat <<'EOF'
 **Instructions for reviewing the diff:**
+0. INVARIANT: ALWAYS EXAMINE THE EXTERNAL DIFF FILE IN FULL BEFORE COMMITTING. This is critical for security and correctness.
 1. Use the Read tool to examine the diff file (you may need to read it in chunks using offset/limit if it's very large)
 2. After you have fully reviewed the diff, you MUST delete the diff temp file for privacy and cleanliness.
 3. Then proceed with the commit review as normal
