@@ -1,4 +1,4 @@
 interface:
   display_name: "Commit"
   short_description: "Run the Git commit review helper"
-  default_prompt: "Use $commit to run the commit review helper with an explicit mode; wait for confirmation in --staged, --all, and --ask modes, while --staged-yes and --all-yes preconfirm the commit gate."
+  default_prompt: "Use $commit to run the commit review helper with an explicit mode; wait for confirmation in --staged, --all, and --ask modes, while --staged-yes and --all-yes preconfirm the commit gate. Add a -push suffix to any mode to push the branch after the commit lands."

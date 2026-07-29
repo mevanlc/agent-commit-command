@@ -1,6 +1,8 @@
-# Invalid Invocation - Separate --yes Modifier
+# Invalid Invocation - Unknown Mode
 
-`--yes` is not a standalone modifier. Please inform the user:
+The user provided an unrecognized mode: `--ask-no-push`
+
+Please inform them:
 
 ## Global Instructions
 
@@ -12,7 +14,17 @@
 - After committing, confirm it landed with `git status --short` (in `--staged` mode, unstaged changes may legitimately remain)
 - Do not push without the user's clear and affirmative instruction to do so
 
-- Use `--staged-yes` instead of `--staged --yes`
-- Use `--all-yes` instead of `--all --yes`
-- Use `--staged-yes-push` or `--all-yes-push` when a push should follow
-- `--ask` is always interactive and cannot be combined with `--yes`
+**Valid modes:** `--staged`, `--staged-yes`, `--all`, `--all-yes`, `--ask`
+
+Any of them may take a `-push` suffix to push after the commit lands.
+
+**Examples:**
+```
+/commit --staged
+/commit --staged-yes
+/commit --all fix the auth routes
+/commit --all-yes update the documentation
+/commit --ask
+/commit --all-yes-push
+/commit --ask-push
+```

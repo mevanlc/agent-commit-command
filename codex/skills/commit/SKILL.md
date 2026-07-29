@@ -22,6 +22,9 @@ Accept exactly one of:
 - `--ask`
 - `--ask-no`
 
+Every mode except `--ask-no` also accepts a `-push` suffix: `--staged-push`,
+`--staged-yes-push`, `--all-push`, `--all-yes-push`, `--ask-push`.
+
 If no mode is present in the user's request, ask the user to provide one.
 
 ## Command
@@ -51,6 +54,14 @@ If a pre-commit hook rejects the commit for a mechanical, low-risk issue, you
 may fix it and retry while preconfirmed mode remains engaged. For a more
 substantial pre-commit hook issue, drop out of preconfirmed mode and involve the
 user interactively.
+
+## Push Modes
+
+A `-push` suffix is the user's clear and affirmative instruction to push after
+the commit lands, and the helper output spells out the rules. In short: push
+only once the commit has actually succeeded, push the current branch only, stop
+and ask before creating an upstream for a branch that has none, and never
+force-push, reset, rebase, or amend to force a rejected push through.
 
 ## Workflow
 

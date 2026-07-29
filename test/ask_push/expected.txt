@@ -1,0 +1,96 @@
+# Git Commit - Interactive Mode
+
+## Global Instructions
+
+- You do not need to acknowledge that you are going to use the tool or the skill -- just use it
+- You do not need to check for the presence of commit-tool.sh -- just call it -- report any after-the-fact failures
+- Always use a descriptive commit message that summarizes the changes; do not use short, non-descriptive messages such as `sync` or `wip`, even if recent commit history contains examples of them
+- Always commit non-interactively so no editor opens: pass the message via `git commit -F -` (heredoc); for an amend use `git commit --amend --file=-`. Never run a bare `git commit` / `git commit --amend`, which can launch `vim`/`$EDITOR` and stall the session
+- If the flow is interrupted after the user has already approved, finish the exact approved commit directly with `git commit -F -` instead of restarting the review
+- After committing, confirm it landed with `git status --short` (in `--staged` mode, unstaged changes may legitimately remain)
+- The user asked for a push, so follow the Push After Commit section below instead of the usual no-push default
+
+## Push After Commit
+
+- The user selected a `-push` mode, which is the clear and affirmative instruction to push
+- Push only after the commit lands; if the commit is declined, abandoned, or fails, do not push
+- Push the current branch only, with `git push` -- no tags, no other branches, no `--all`
+- Pushing also publishes any earlier unpushed commits on this branch; if there are several, say so
+- If the branch has no upstream, stop and ask the user before creating one with `git push -u <remote> <branch>`; never guess when more than one remote exists
+- If HEAD is detached, do not push -- report that instead
+- If the push is rejected (non-fast-forward, protected branch, remote hook), stop and report what git said; never force-push, reset, rebase, or amend to get around it
+- Account for the push in the final report; `Completed successfully.` covers an uneventful commit and push
+
+Help the user decide what to stage and commit.
+
+Branch: `main`
+Identity: `Test User <test@example.com>`
+
+# Recent Commits
+```
+HASH Initial commit
+```
+
+# Working Tree Status
+
+Output of `git status --porcelain -u`:
+```
+ M file.txt
+```
+
+# Instructions
+
+1. **Summarize what's available to commit by status bucket** - relay the status above (they can't see slash command output):
+   - Use concise, structured `Staged changes`, `Unstaged changes`, and `Untracked files` sections for each nonempty bucket
+   - Summarize the content or purpose of related paths instead of merely repeating a long path list
+   - First column: staged status (`M`=modified, `A`=added, `D`=deleted, `R`=renamed)
+   - Second column: unstaged status
+   - `??` = untracked file
+2. **Resolve mixed bucket state before staging**:
+   - If any two or more of the staged, unstaged, and untracked buckets are nonempty, explicitly ask whether that split reflects intended separate commits or incidental staging state
+   - Recommend one commit or a concrete split based on logical cohesion, and explain the recommendation briefly
+   - Do not infer that split status alone means either one commit or multiple commits
+3. **Audit untracked files when present**:
+   - Inspect the applicable repository `.gitignore` rules and distinguish intentional source/docs from generated output, local state, secrets, or other files that normally should not be tracked
+   - If the untracked files look intentional and the ignore rules look solid, reassure the user succinctly
+   - If any untracked files likely belong in `.gitignore`, stop and resolve those paths and proposed ignore rules with the user before staging
+4. **Ask the user** what should be included in this commit:
+   - Suggest logical groupings if changes seem separable
+   - If user gave additional instructions, use those as guidance
+   - Offer options like "all of it", "just the staged", or specific files
+5. Stage the selected changes (`git add <files>`)
+6. **Before generating the commit review**, run `git status --porcelain -u` to refresh your view of what's staged
+7. Generate a commit message (imperative summary, optional bullets)
+8. Present a **Commit Review** to the user in this exact format:
+
+```
+# Commit Review
+
+## Paths
+M  path/to/modified
+A  path/to/added
+D  path/to/deleted
+R  {old/path -> new/path}
+
+## Proposed Commit Message
+
+<summary line>
+
+    [- bullet if needed]
+    [- bullet if needed]
+
+----
+
+Proceed? ([y]es / [n]o)
+```
+
+Wait for user confirmation before committing.
+9. If confirmed: commit using HEREDOC format, then push as described in the Push After Commit section
+10. If the commit was uneventful, report only: `Completed successfully.`
+11. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
+
+# Safety Checks
+
+Stop and warn if selected files include:
+- Secrets (`.env`, credentials, API keys, certs)
+- Large binaries that look accidental

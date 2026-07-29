@@ -1,7 +1,7 @@
 ---
 name: gdf-commit
 description: Git commit helper (using gdf wrapper). Use only when explicitly invoked. Do not consult memories.
-argument-hint: --<staged|staged-yes|all|all-yes|ask> [additional instructions]
+argument-hint: --<staged|staged-yes|all|all-yes|ask>[-push] [additional instructions]
 ---
 
 ## IMPORTANT: Use the `gdf` command instead of the `git` command

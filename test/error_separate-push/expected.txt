@@ -1,6 +1,6 @@
-# Invalid Invocation - Separate --yes Modifier
+# Invalid Invocation - Separate --push Modifier
 
-`--yes` is not a standalone modifier. Please inform the user:
+`--push` is not a standalone modifier. Please inform the user:
 
 ## Global Instructions
 
@@ -12,7 +12,7 @@
 - After committing, confirm it landed with `git status --short` (in `--staged` mode, unstaged changes may legitimately remain)
 - Do not push without the user's clear and affirmative instruction to do so
 
-- Use `--staged-yes` instead of `--staged --yes`
-- Use `--all-yes` instead of `--all --yes`
-- Use `--staged-yes-push` or `--all-yes-push` when a push should follow
-- `--ask` is always interactive and cannot be combined with `--yes`
+- Use `--staged-push` instead of `--staged --push`
+- Use `--all-push` instead of `--all --push`
+- Use `--ask-push` instead of `--ask --push`
+- Combine it with a preconfirmed mode as `--staged-yes-push` or `--all-yes-push`

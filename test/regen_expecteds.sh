@@ -13,6 +13,9 @@ fi
 
 for case_dir in "${cases[@]}"; do
   [[ -d "$case_dir" ]] || continue
+  # gen_actual.sh cd's into the repo before writing, so it needs an absolute
+  # target; a relative case dir would otherwise silently produce nothing.
+  case_dir="$(cd "$case_dir" && pwd)"
   [[ -f "${case_dir}/gen_repo.sh" ]] || continue
   [[ -f "${case_dir}/gen_actual.sh" ]] || continue
 

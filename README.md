@@ -72,6 +72,12 @@ untracked files separately; recommends whether mixed buckets warrant split
 commits; and checks untracked files against the repository's ignore rules before
 staging.
 
+Any mode also takes a `-push` suffix — `--staged-push`, `--staged-yes-push`,
+`--all-push`, `--all-yes-push`, `--ask-push` — which asks for a push once the
+commit lands. The push happens only after a successful commit, covers the
+current branch only, stops to ask before creating an upstream for a branch that
+has none, and never rewrites history to force a rejected push through.
+
 For large diffs, the helper may write the diff to a temp file under `/tmp/` to avoid CLI output truncation and will instruct you to delete it after review.
 
 ## Configuration

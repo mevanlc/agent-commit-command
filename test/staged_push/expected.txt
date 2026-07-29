@@ -1,4 +1,4 @@
-# Git Commit - Stage All Mode
+# Git Commit - Staged Only Mode
 
 ## Global Instructions
 
@@ -8,9 +8,20 @@
 - Always commit non-interactively so no editor opens: pass the message via `git commit -F -` (heredoc); for an amend use `git commit --amend --file=-`. Never run a bare `git commit` / `git commit --amend`, which can launch `vim`/`$EDITOR` and stall the session
 - If the flow is interrupted after the user has already approved, finish the exact approved commit directly with `git commit -F -` instead of restarting the review
 - After committing, confirm it landed with `git status --short` (in `--staged` mode, unstaged changes may legitimately remain)
-- Do not push without the user's clear and affirmative instruction to do so
+- The user asked for a push, so follow the Push After Commit section below instead of the usual no-push default
 
-Stage all outstanding changes, then commit.
+## Push After Commit
+
+- The user selected a `-push` mode, which is the clear and affirmative instruction to push
+- Push only after the commit lands; if the commit is declined, abandoned, or fails, do not push
+- Push the current branch only, with `git push` -- no tags, no other branches, no `--all`
+- Pushing also publishes any earlier unpushed commits on this branch; if there are several, say so
+- If the branch has no upstream, stop and ask the user before creating one with `git push -u <remote> <branch>`; never guess when more than one remote exists
+- If HEAD is detached, do not push -- report that instead
+- If the push is rejected (non-fast-forward, protected branch, remote hook), stop and report what git said; never force-push, reset, rebase, or amend to get around it
+- Account for the push in the final report; `Completed successfully.` covers an uneventful commit and push
+
+Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 Branch: `main`
 Identity: `Test User <test@example.com>`
@@ -21,29 +32,23 @@ HASH Initial commit
 ```
 # Staged Changes
 
-Ran `git add -A` to stage all changes.
-
-Output of `git status --porcelain`:
+Output of `git status --porcelain | grep '^[MADRCT]'`:
 ```
-A  large_file.txt
+A  staged.txt
 ```
-
-> Staging backup saved to `/tmp/commit-tool-staged-backup-PID.patch` (empty; nothing was staged before)
-> To abort: `git reset --mixed`
 
 # Diff
 
-**Diff too large for inline display** (NNNNN characters)
-
-The diff has been saved to: `/tmp/commit-tool-diff-PID.txt`
-
-**Instructions for reviewing the diff:**
-0. INVARIANT: ALWAYS EXAMINE THE EXTERNAL DIFF FILE IN FULL BEFORE COMMITTING. This is critical for security and correctness.
-1. Use the Read tool to examine the diff file (you may need to read it in chunks using offset/limit if it's very large)
-2. After you have fully reviewed the diff, you MUST delete the diff temp file for privacy and cleanliness.
-3. Then proceed with the commit review as normal# Instructions
-
-Changes are already staged. Review and confirm:
+Output of `git diff --cached`:
+```diff
+diff --git a/staged.txt b/staged.txt
+new file mode 100644
+index HASH..HASH
+--- /dev/null
++++ b/staged.txt
+@@ -0,0 +1 @@
++staged change
+```# Instructions
 
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
 2. Match the style of recent commits shown above
@@ -71,14 +76,12 @@ Proceed? ([y]es / [n]o)
 ```
 
 Wait for user confirmation before committing.
-4. If confirmed: commit using HEREDOC format
+4. If confirmed: commit using HEREDOC format, then push as described in the Push After Commit section
 5. If the commit was uneventful, report only: `Completed successfully.`
 6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
-7. If declined: run `git reset --mixed` to restore previous staging
 
 # Safety Checks
 
-Stop and warn if changes include:
+Stop and warn if staged files include:
 - Secrets (`.env`, credentials, API keys, certs)
 - Large binaries that look accidental
-- Files that seem unrelated to the apparent intent

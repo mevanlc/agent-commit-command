@@ -3,6 +3,7 @@
 # Usage: commit-tool.sh <git-cmd> "<mode> [additional-instructions...]"
 #   git-cmd: "git" or "gdf" (or other git wrapper)
 #   mode: --staged, --staged-yes, --all, --all-yes, or --ask
+#         (append -push to any mode to push the branch after the commit lands)
 #   Note: arg2 is a single quoted string; mode is split from the first word
 
 set -euo pipefail
@@ -17,8 +18,20 @@ MAX_OUTPUT_CHARS=28000  # Leave some margin below 30000
 
 # === GLOBAL INSTRUCTIONS (ALL PATHS) ===
 
-GLOBAL_INSTRUCTIONS_SECTION="$(
-  cat <<'EOF'
+PUSH_MODE=0
+
+# The closing bullet states the push policy, which flips in the `-push` modes.
+# Rebuild the section whenever PUSH_MODE changes.
+build_global_instructions() {
+  local push_policy
+  if [[ "$PUSH_MODE" -eq 1 ]]; then
+    push_policy='- The user asked for a push, so follow the Push After Commit section below instead of the usual no-push default'
+  else
+    push_policy="- Do not push without the user's clear and affirmative instruction to do so"
+  fi
+
+  GLOBAL_INSTRUCTIONS_SECTION="$(
+    cat <<'EOF'
 ## Global Instructions
 
 - You do not need to acknowledge that you are going to use the tool or the skill -- just use it
@@ -27,17 +40,18 @@ GLOBAL_INSTRUCTIONS_SECTION="$(
 - Always commit non-interactively so no editor opens: pass the message via `git commit -F -` (heredoc); for an amend use `git commit --amend --file=-`. Never run a bare `git commit` / `git commit --amend`, which can launch `vim`/`$EDITOR` and stall the session
 - If the flow is interrupted after the user has already approved, finish the exact approved commit directly with `git commit -F -` instead of restarting the review
 - After committing, confirm it landed with `git status --short` (in `--staged` mode, unstaged changes may legitimately remain)
-- Do not push without the user's clear and affirmative instruction to do so
-
 EOF
-  printf '__END__'
-)"
-GLOBAL_INSTRUCTIONS_SECTION="${GLOBAL_INSTRUCTIONS_SECTION%__END__}"
+    printf '%s\n\n__END__' "$push_policy"
+  )"
+  GLOBAL_INSTRUCTIONS_SECTION="${GLOBAL_INSTRUCTIONS_SECTION%__END__}"
+}
+build_global_instructions
 
 emit_global_instructions() {
   printf '%s' "$GLOBAL_INSTRUCTIONS_SECTION"
   [[ -n "${PRECONFIRMED_MODE_SECTION:-}" ]] && printf '%s' "$PRECONFIRMED_MODE_SECTION"
-  true  # avoid set -e exit when the preconfirmed-mode section is empty
+  [[ -n "${PUSH_MODE_SECTION:-}" ]] && printf '%s' "$PUSH_MODE_SECTION"
+  true  # avoid set -e exit when the trailing mode sections are empty
 }
 
 temp_dir() {
@@ -117,6 +131,8 @@ EOF
 - `--all-yes` - Stage all modifications and commit without waiting at the commit gate
 - `--ask` - Interactively decide what to stage
 
+Append `-push` to any mode to push the branch after the commit lands.
+
 **Examples:**
 ```
 /commit --staged
@@ -124,23 +140,37 @@ EOF
 /commit --all fix the auth routes
 /commit --all-yes update the documentation
 /commit --ask
+/commit --all-yes-push
+/commit --ask-push
 ```
 EOF
   exit 0
 fi
 
-case "$MODE" in
-  --ask-no)
-    cat <<'EOF'
+if [[ "$MODE" == "--ask-no" ]]; then
+  cat <<'EOF'
 # Git Commit - Ask No Mode
 
 No.
 
 Nothing was staged. Nothing was committed. You predeclined with admirable efficiency.
 EOF
-    exit 0
+  exit 0
+fi
+
+# `-push` is a suffix on any mode, not a mode of its own; strip it first so the
+# rest of the script only ever sees the underlying mode.
+MODE_CORE="$MODE"
+if [[ "$MODE_CORE" == *-push ]]; then
+  PUSH_MODE=1
+  MODE_CORE="${MODE_CORE%-push}"
+  build_global_instructions
+fi
+
+case "$MODE_CORE" in
+  --staged|--all|--ask)
+    BASE_MODE="$MODE_CORE"
     ;;
-  --staged|--all|--ask) ;;
   --staged-yes)
     BASE_MODE="--staged"
     PRECONFIRMED_MODE=1
@@ -150,6 +180,9 @@ EOF
     PRECONFIRMED_MODE=1
     ;;
   *)
+    # An unknown mode is not a push request, whatever it was suffixed with.
+    PUSH_MODE=0
+    build_global_instructions
     printf '# Invalid Invocation - Unknown Mode\n\n'
     printf 'The user provided an unrecognized mode: `%s`\n\n' "$MODE"
     cat <<'EOF'
@@ -160,6 +193,8 @@ EOF
     cat <<'EOF'
 **Valid modes:** `--staged`, `--staged-yes`, `--all`, `--all-yes`, `--ask`
 
+Any of them may take a `-push` suffix to push after the commit lands.
+
 **Examples:**
 ```
 /commit --staged
@@ -167,6 +202,8 @@ EOF
 /commit --all fix the auth routes
 /commit --all-yes update the documentation
 /commit --ask
+/commit --all-yes-push
+/commit --ask-push
 ```
 EOF
     exit 0
@@ -185,7 +222,25 @@ EOF
   cat <<'EOF'
 - Use `--staged-yes` instead of `--staged --yes`
 - Use `--all-yes` instead of `--all --yes`
+- Use `--staged-yes-push` or `--all-yes-push` when a push should follow
 - `--ask` is always interactive and cannot be combined with `--yes`
+EOF
+  exit 0
+fi
+
+if [[ "$FIRST_EXTRA_ARG" == "--push" ]]; then
+  cat <<'EOF'
+# Invalid Invocation - Separate --push Modifier
+
+`--push` is not a standalone modifier. Please inform the user:
+
+EOF
+  emit_global_instructions
+  cat <<'EOF'
+- Use `--staged-push` instead of `--staged --push`
+- Use `--all-push` instead of `--all --push`
+- Use `--ask-push` instead of `--ask --push`
+- Combine it with a preconfirmed mode as `--staged-yes-push` or `--all-yes-push`
 EOF
   exit 0
 fi
@@ -207,6 +262,29 @@ EOF
     printf '__END__'
   })"
   PRECONFIRMED_MODE_SECTION="${PRECONFIRMED_MODE_SECTION%__END__}"
+fi
+
+PUSH_MODE_SECTION=""
+if [[ "$PUSH_MODE" -eq 1 ]]; then
+  # @GIT@ is substituted below so the section speaks in terms of the wrapper.
+  PUSH_MODE_SECTION="$({
+    cat <<'EOF'
+## Push After Commit
+
+- The user selected a `-push` mode, which is the clear and affirmative instruction to push
+- Push only after the commit lands; if the commit is declined, abandoned, or fails, do not push
+- Push the current branch only, with `@GIT@ push` -- no tags, no other branches, no `--all`
+- Pushing also publishes any earlier unpushed commits on this branch; if there are several, say so
+- If the branch has no upstream, stop and ask the user before creating one with `@GIT@ push -u <remote> <branch>`; never guess when more than one remote exists
+- If HEAD is detached, do not push -- report that instead
+- If the push is rejected (non-fast-forward, protected branch, remote hook), stop and report what @GIT@ said; never force-push, reset, rebase, or amend to get around it
+- Account for the push in the final report; `Completed successfully.` covers an uneventful commit and push
+
+EOF
+    printf '__END__'
+  })"
+  PUSH_MODE_SECTION="${PUSH_MODE_SECTION%__END__}"
+  PUSH_MODE_SECTION="${PUSH_MODE_SECTION//@GIT@/$GIT_CMD}"
 fi
 
 # === LOAD CONFIG ===
@@ -345,6 +423,10 @@ Wait for user confirmation before committing.'
   DECLINE_CONDITION='If declined'
 fi
 
+if [[ "$PUSH_MODE" -eq 1 ]]; then
+  COMMIT_ACTION+=', then push as described in the Push After Commit section'
+fi
+
 # === BUILD REPORT SECTIONS ===
 
 RECENT_COMMITS_SECTION=""
@@ -472,7 +554,7 @@ EOF
     # Too many lines - use the original "discuss with user" approach
     OUTPUT_HEADER="# Git Commit - Staged Only Mode
 
-${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}${PUSH_MODE_SECTION}Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 "
     [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
@@ -518,7 +600,7 @@ Stop and warn if staged files include:
   # Compose full output to measure size
   OUTPUT_HEADER="# Git Commit - Staged Only Mode
 
-${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}${PUSH_MODE_SECTION}Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 "
   [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
@@ -648,7 +730,7 @@ EOF
   if [[ $DIFF_LINES -gt 8000 ]]; then
     OUTPUT_HEADER="# Git Commit - Stage All Mode
 
-${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}Stage all outstanding changes, then commit.
+${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}${PUSH_MODE_SECTION}Stage all outstanding changes, then commit.
 
 "
     [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
@@ -703,7 +785,7 @@ Stop and warn if changes include:
   # Compose full output to measure size
   OUTPUT_HEADER="# Git Commit - Stage All Mode
 
-${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}Stage all outstanding changes, then commit.
+${GLOBAL_INSTRUCTIONS_SECTION}${PRECONFIRMED_MODE_SECTION}${PUSH_MODE_SECTION}Stage all outstanding changes, then commit.
 
 "
   [[ -n "$EXTRA_INSTRUCTIONS" ]] && OUTPUT_HEADER+="# Additional Instructions from User
