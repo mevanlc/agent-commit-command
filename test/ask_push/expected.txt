@@ -19,7 +19,7 @@
 - If the branch has no upstream, stop and ask the user before creating one with `git push -u <remote> <branch>`; never guess when more than one remote exists
 - If HEAD is detached, do not push -- report that instead
 - If the push is rejected (non-fast-forward, protected branch, remote hook), stop and report what git said; never force-push, reset, rebase, or amend to get around it
-- Account for the push in the final report; `Completed successfully.` covers an uneventful commit and push
+- Account for the push in the final report, using the outcome lines in the Final Report section
 
 Help the user decide what to stage and commit.
 
@@ -86,8 +86,24 @@ Proceed? ([y]es / [n]o)
 
 Wait for user confirmation before committing.
 9. If confirmed: commit using HEREDOC format, then push as described in the Push After Commit section
-10. If the commit was uneventful, report only: `Completed successfully.`
-11. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
+10. Report as described in the Final Report section below
+
+# Final Report
+
+Report these in order, then stop:
+
+1. **Repo changes you made.** One line each, saying what and why. Report every change you made to the repository beyond the staging, commit, and push this mode authorizes -- file edits, files created/deleted/renamed, mode changes, `.gitignore` or git config edits, hook or dependency changes. Edits you made to satisfy a pre-commit hook belong here. This is unconditional: report them even when they are small, obvious, and fully successful. Omit this item only when you changed nothing.
+2. **Substantial issues.** Anything that went wrong or needed a retry, even when the final outcome is green: a hook that rejected the commit, a failing formatter or linter, a push that needed a second attempt, warnings a careful reviewer would want to see. Skip routine, expected output.
+3. **One outcome line**, last, exactly one of:
+
+       No commit was attempted: {reason}.
+       Commit failed: {reason}.
+       Committed and pushed successfully.
+       Committed successfully, push not attempted: {reason}.
+       Committed successfully, push failed:
+       {reason}
+
+Never include the commit hash. When more than one commit was made, say how many. When the push published earlier unpushed commits, say so on the outcome line. If you are stopping to ask the user a question, ask it -- these lines are for a completed turn only.
 
 # Safety Checks
 

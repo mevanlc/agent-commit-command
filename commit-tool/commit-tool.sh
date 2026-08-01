@@ -278,7 +278,7 @@ if [[ "$PUSH_MODE" -eq 1 ]]; then
 - If the branch has no upstream, stop and ask the user before creating one with `@GIT@ push -u <remote> <branch>`; never guess when more than one remote exists
 - If HEAD is detached, do not push -- report that instead
 - If the push is rejected (non-fast-forward, protected branch, remote hook), stop and report what @GIT@ said; never force-push, reset, rebase, or amend to get around it
-- Account for the push in the final report; `Completed successfully.` covers an uneventful commit and push
+- Account for the push in the final report, using the outcome lines in the Final Report section
 
 EOF
     printf '__END__'
@@ -286,6 +286,46 @@ EOF
   PUSH_MODE_SECTION="${PUSH_MODE_SECTION%__END__}"
   PUSH_MODE_SECTION="${PUSH_MODE_SECTION//@GIT@/$GIT_CMD}"
 fi
+
+# === FINAL REPORT SECTION ===
+
+# Every path that can reach a commit ends with this section, so the outcome
+# vocabulary cannot drift between modes. The outcome lines themselves differ in
+# the `-push` modes; PUSH_MODE is settled by the time this runs.
+build_final_report_section() {
+  local outcome_lines push_note
+
+  if [[ "$PUSH_MODE" -eq 1 ]]; then
+    outcome_lines='       No commit was attempted: {reason}.
+       Commit failed: {reason}.
+       Committed and pushed successfully.
+       Committed successfully, push not attempted: {reason}.
+       Committed successfully, push failed:
+       {reason}'
+    push_note=' When the push published earlier unpushed commits, say so on the outcome line.'
+  else
+    outcome_lines='       No commit was attempted: {reason}.
+       Commit failed: {reason}.
+       Committed successfully.'
+    push_note=''
+  fi
+
+  FINAL_REPORT_SECTION="$({
+    printf '# Final Report\n\nReport these in order, then stop:\n\n'
+    printf '1. **Repo changes you made.** One line each, saying what and why. Report every change you made to the repository beyond the staging, commit, and push this mode authorizes -- file edits, files created/deleted/renamed, mode changes, `.gitignore` or git config edits, hook or dependency changes. Edits you made to satisfy a pre-commit hook belong here. This is unconditional: report them even when they are small, obvious, and fully successful. Omit this item only when you changed nothing.\n'
+    printf '2. **Substantial issues.** Anything that went wrong or needed a retry, even when the final outcome is green: a hook that rejected the commit, a failing formatter or linter, a push that needed a second attempt, warnings a careful reviewer would want to see. Skip routine, expected output.\n'
+    printf '3. **One outcome line**, last, exactly one of:\n\n'
+    printf '%s\n\n' "$outcome_lines"
+    printf 'Never include the commit hash. When more than one commit was made, say how many.%s If you are stopping to ask the user a question, ask it -- these lines are for a completed turn only.\n\n' "$push_note"
+    printf '__END__'
+  })"
+  FINAL_REPORT_SECTION="${FINAL_REPORT_SECTION%__END__}"
+}
+build_final_report_section
+
+emit_final_report_section() {
+  printf '%s' "$FINAL_REPORT_SECTION"
+}
 
 # === LOAD CONFIG ===
 
@@ -352,7 +392,14 @@ fi
 
 # === GATHER GIT CONTEXT ===
 
-BRANCH=$($GIT_CMD branch --show-current 2>/dev/null || echo "(detached HEAD)")
+# `branch --show-current` prints nothing and still exits 0 on a detached HEAD,
+# so an `|| echo` fallback never fires and the agent is handed an empty branch
+# name. `symbolic-ref -q` exits non-zero instead, and still reports the branch
+# on an unborn HEAD (a repo with no commits yet).
+BRANCH=$($GIT_CMD symbolic-ref -q --short HEAD 2>/dev/null || true)
+if [[ -z "$BRANCH" ]]; then
+  BRANCH="(detached HEAD)"
+fi
 USER_NAME=$($GIT_CMD config user.name)
 USER_EMAIL=$($GIT_CMD config user.email)
 STATUS=$($GIT_CMD status --short)
@@ -445,6 +492,12 @@ fi
 # Bash 5.x has a heredoc deadlock bug when content reaches 512 bytes
 # (PIPE_BUF on macOS). printf bypasses the internal pipe entirely.
 
+# IMPORTANT: each compose_diff_* helper ends its block with a blank line, but
+# `$(...)` strips trailing newlines on capture. Every call site must restore the
+# separator with `+=$'\n\n'`; without it the next section's heading lands on the
+# block's last line -- gluing `# Instructions` onto the closing ``` fence, which
+# then never closes and swallows the rest of the output into the code block.
+
 compose_diff_inline() {
   local diff_content="$1"
   printf '# Diff\n\nOutput of `%s diff --cached`:\n```diff\n' "$GIT_CMD"
@@ -470,7 +523,7 @@ EOF
 
 compose_diff_too_many_lines() {
   local line_count="$1"
-  printf '# Diff\n'
+  printf '# Diff\n\n'
   printf '**DIFF TOO LARGE** (%s lines) - discuss strategies with user:\n' "$line_count"
   cat <<'EOF'
 - Split the commit
@@ -524,6 +577,7 @@ EOF
     emit_branch_identity
     emit_report_sections
     emit_conflicts_block
+    emit_final_report_section
     exit 0
   fi
 
@@ -547,7 +601,9 @@ EOF
   # Get staged status and diff
   STAGED_STATUS=$($GIT_CMD status --porcelain | grep '^[MADRCT]' || true)
   STAGED_DIFF=$($GIT_CMD diff --cached)
-  DIFF_LINES=$(echo "$STAGED_DIFF" | wc -l)
+  # `wc -l` pads its count with leading spaces on BSD/macOS, which would render
+  # as `(    9006 lines)`; tr strips them.
+  DIFF_LINES=$(echo "$STAGED_DIFF" | wc -l | tr -d '[:space:]')
 
   # Check line count threshold first
   if [[ $DIFF_LINES -gt 8000 ]]; then
@@ -577,6 +633,7 @@ $STAGED_STATUS
 
 "
     OUTPUT_DIFF=$(compose_diff_too_many_lines "$DIFF_LINES")
+    OUTPUT_DIFF+=$'\n\n'
 
     OUTPUT_INSTRUCTIONS="# Instructions
 
@@ -584,10 +641,9 @@ $STAGED_STATUS
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
 4. $COMMIT_ACTION
-5. If the commit was uneventful, report only: \`Completed successfully.\`
-6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
+5. Report as described in the Final Report section below
 
-# Safety Checks
+${FINAL_REPORT_SECTION}# Safety Checks
 
 Stop and warn if staged files include:
 - Secrets (\`.env\`, credentials, API keys, certs)
@@ -624,6 +680,7 @@ $STAGED_STATUS
 "
 
   OUTPUT_DIFF_INLINE=$(compose_diff_inline "$STAGED_DIFF")
+  OUTPUT_DIFF_INLINE+=$'\n\n'
 
   OUTPUT_INSTRUCTIONS="# Instructions
 
@@ -631,10 +688,9 @@ $STAGED_STATUS
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
 4. $COMMIT_ACTION
-5. If the commit was uneventful, report only: \`Completed successfully.\`
-6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
+5. Report as described in the Final Report section below
 
-# Safety Checks
+${FINAL_REPORT_SECTION}# Safety Checks
 
 Stop and warn if staged files include:
 - Secrets (\`.env\`, credentials, API keys, certs)
@@ -650,6 +706,7 @@ Stop and warn if staged files include:
     echo "$STAGED_DIFF" > "$DIFF_FILE"
     DIFF_CHAR_COUNT=${#STAGED_DIFF}
     OUTPUT_DIFF_EXTERNAL=$(compose_diff_external "$DIFF_FILE" "$DIFF_CHAR_COUNT")
+    OUTPUT_DIFF_EXTERNAL+=$'\n\n'
     FULL_OUTPUT="${OUTPUT_HEADER}${OUTPUT_PRE_DIFF}${OUTPUT_DIFF_EXTERNAL}${OUTPUT_INSTRUCTIONS}"
   fi
 
@@ -675,6 +732,7 @@ EOF
     emit_branch_identity
     emit_report_sections
     emit_conflicts_block
+    emit_final_report_section
     exit 0
   fi
 
@@ -724,7 +782,7 @@ EOF
   # Get staged status and diff
   STAGED_STATUS=$($GIT_CMD status --porcelain 2>/dev/null || true)
   ALL_DIFF=$($GIT_CMD diff --cached 2>/dev/null || true)
-  DIFF_LINES=$(echo "$ALL_DIFF" | wc -l)
+  DIFF_LINES=$(echo "$ALL_DIFF" | wc -l | tr -d '[:space:]')
 
   # Check line count threshold first
   if [[ $DIFF_LINES -gt 8000 ]]; then
@@ -758,6 +816,7 @@ $STAGED_STATUS
 
 "
     OUTPUT_DIFF=$(compose_diff_too_many_lines "$DIFF_LINES")
+    OUTPUT_DIFF+=$'\n\n'
 
     OUTPUT_INSTRUCTIONS="# Instructions
 
@@ -767,11 +826,10 @@ $STAGED_REVIEW_INTRO
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
 4. $COMMIT_ACTION
-5. If the commit was uneventful, report only: \`Completed successfully.\`
-6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
-7. $DECLINE_CONDITION: run \`$RESTORE_STAGING_CMD\` to restore previous staging
+5. $DECLINE_CONDITION: run \`$RESTORE_STAGING_CMD\` to restore previous staging
+6. Report as described in the Final Report section below
 
-# Safety Checks
+${FINAL_REPORT_SECTION}# Safety Checks
 
 Stop and warn if changes include:
 - Secrets (\`.env\`, credentials, API keys, certs)
@@ -814,6 +872,7 @@ $STAGED_STATUS
 "
 
   OUTPUT_DIFF_INLINE=$(compose_diff_inline "$ALL_DIFF")
+  OUTPUT_DIFF_INLINE+=$'\n\n'
 
   OUTPUT_INSTRUCTIONS="# Instructions
 
@@ -823,11 +882,10 @@ $STAGED_REVIEW_INTRO
 2. Match the style of recent commits shown above
 3. $COMMIT_REVIEW_FORMAT
 4. $COMMIT_ACTION
-5. If the commit was uneventful, report only: \`Completed successfully.\`
-6. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
-7. $DECLINE_CONDITION: run \`$RESTORE_STAGING_CMD\` to restore previous staging
+5. $DECLINE_CONDITION: run \`$RESTORE_STAGING_CMD\` to restore previous staging
+6. Report as described in the Final Report section below
 
-# Safety Checks
+${FINAL_REPORT_SECTION}# Safety Checks
 
 Stop and warn if changes include:
 - Secrets (\`.env\`, credentials, API keys, certs)
@@ -844,6 +902,7 @@ Stop and warn if changes include:
     echo "$ALL_DIFF" > "$DIFF_FILE"
     DIFF_CHAR_COUNT=${#ALL_DIFF}
     OUTPUT_DIFF_EXTERNAL=$(compose_diff_external "$DIFF_FILE" "$DIFF_CHAR_COUNT")
+    OUTPUT_DIFF_EXTERNAL+=$'\n\n'
     FULL_OUTPUT="${OUTPUT_HEADER}${OUTPUT_PRE_DIFF}${OUTPUT_DIFF_EXTERNAL}${OUTPUT_INSTRUCTIONS}"
   fi
 
@@ -872,6 +931,7 @@ EOF
 
   if [[ -n "$CONFLICTS" ]]; then
     emit_conflicts_block
+    emit_final_report_section
     exit 0
   fi
 
@@ -923,10 +983,9 @@ EOF
 EOF
   printf '8. %s\n' "$COMMIT_REVIEW_FORMAT"
   printf '9. %s\n' "$COMMIT_ACTION"
+  printf '10. Report as described in the Final Report section below\n\n'
+  emit_final_report_section
   cat <<'EOF'
-10. If the commit was uneventful, report only: `Completed successfully.`
-11. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, summarize those events without reporting the commit hash
-
 # Safety Checks
 
 Stop and warn if selected files include:

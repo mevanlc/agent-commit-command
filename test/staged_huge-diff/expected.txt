@@ -1,4 +1,4 @@
-# Git Commit - Stage All Mode
+# Git Commit - Staged Only Mode
 
 ## Global Instructions
 
@@ -10,43 +10,31 @@
 - After committing, confirm it landed with `git status --short` (in `--staged` mode, unstaged changes may legitimately remain)
 - Do not push without the user's clear and affirmative instruction to do so
 
-Stage all outstanding changes, then commit.
+Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
 
 Branch: `main`
 Identity: `Test User <test@example.com>`
 
 # Recent Commits
 ```
-(no commits yet)
+HASH Initial commit
 ```
 # Staged Changes
 
-Ran `git add -A` to stage all changes.
-
-Output of `git status --porcelain`:
+Output of `git status --porcelain | grep '^[MADRCT]'`:
 ```
-A  file.txt
+A  huge_file.txt
 ```
-
-> Staging backup saved to `/tmp/commit-tool-staged-backup-PID.patch` (empty; nothing was staged before)
-> To abort: `git read-tree --empty`
 
 # Diff
 
-Output of `git diff --cached`:
-```diff
-diff --git a/file.txt b/file.txt
-new file mode 100644
-index HASH..HASH
---- /dev/null
-+++ b/file.txt
-@@ -0,0 +1 @@
-+initial
-```
+**DIFF TOO LARGE** (9006 lines) - discuss strategies with user:
+- Split the commit
+- Review anyway (might fit context)
+- Reduce diff context lines
+- Skip lock files
 
 # Instructions
-
-Changes are already staged. Review and confirm:
 
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
 2. Match the style of recent commits shown above
@@ -75,8 +63,7 @@ Proceed? ([y]es / [n]o)
 
 Wait for user confirmation before committing.
 4. If confirmed: commit using HEREDOC format
-5. If declined: run `git read-tree --empty` to restore previous staging
-6. Report as described in the Final Report section below
+5. Report as described in the Final Report section below
 
 # Final Report
 
@@ -94,7 +81,6 @@ Never include the commit hash. When more than one commit was made, say how many.
 
 # Safety Checks
 
-Stop and warn if changes include:
+Stop and warn if staged files include:
 - Secrets (`.env`, credentials, API keys, certs)
 - Large binaries that look accidental
-- Files that seem unrelated to the apparent intent

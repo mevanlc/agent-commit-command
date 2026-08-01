@@ -78,8 +78,8 @@ force-push, reset, rebase, or amend to force a rejected push through.
 4. Follow the helper output exactly.
 5. If it says `STOP`, stop and help the user resolve the issue first.
 6. Present the requested Commit Review. In ordinary modes, wait for explicit user confirmation before running any commit command; in a preconfirmed mode, proceed as instructed without waiting.
-7. Once confirmed or while preconfirmed mode remains engaged, perform the commit exactly as instructed. If the commit was uneventful, the final response may be exactly `Completed successfully.`
-8. If hooks, formatters, clippy, errors, or substantial warnings made the commit eventful, relay those events. Do not report the commit hash unless the user asks for it.
+7. Once confirmed or while preconfirmed mode remains engaged, perform the commit exactly as instructed.
+8. Close out with the report the helper's Final Report section describes: every change you made to the repository beyond the staging, commit, and push the mode authorizes (including edits made to satisfy a pre-commit hook), then any substantial issues even when the outcome is green, then one outcome line. Do not report the commit hash unless the user asks for it.
 9. If the helper requests heredoc-based commit input, put only the commit message in the heredoc. Do not put follow-up commands inside the heredoc.
 
 ## Windows

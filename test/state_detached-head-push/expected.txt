@@ -1,4 +1,4 @@
-# Git Commit - Stage All Mode
+# Git Commit - Staged Only Mode
 
 ## Global Instructions
 
@@ -8,45 +8,49 @@
 - Always commit non-interactively so no editor opens: pass the message via `git commit -F -` (heredoc); for an amend use `git commit --amend --file=-`. Never run a bare `git commit` / `git commit --amend`, which can launch `vim`/`$EDITOR` and stall the session
 - If the flow is interrupted after the user has already approved, finish the exact approved commit directly with `git commit -F -` instead of restarting the review
 - After committing, confirm it landed with `git status --short` (in `--staged` mode, unstaged changes may legitimately remain)
-- Do not push without the user's clear and affirmative instruction to do so
+- The user asked for a push, so follow the Push After Commit section below instead of the usual no-push default
 
-Stage all outstanding changes, then commit.
+## Push After Commit
 
-Branch: `main`
+- The user selected a `-push` mode, which is the clear and affirmative instruction to push
+- Push only after the commit lands; if the commit is declined, abandoned, or fails, do not push
+- Push the current branch only, with `git push` -- no tags, no other branches, no `--all`
+- Pushing also publishes any earlier unpushed commits on this branch; if there are several, say so
+- If the branch has no upstream, stop and ask the user before creating one with `git push -u <remote> <branch>`; never guess when more than one remote exists
+- If HEAD is detached, do not push -- report that instead
+- If the push is rejected (non-fast-forward, protected branch, remote hook), stop and report what git said; never force-push, reset, rebase, or amend to get around it
+- Account for the push in the final report, using the outcome lines in the Final Report section
+
+Commit exactly what's staged. **Ignore unstaged changes entirely** - don't mention them.
+
+Branch: `(detached HEAD)`
 Identity: `Test User <test@example.com>`
 
 # Recent Commits
 ```
-(no commits yet)
+HASH Initial commit
 ```
 # Staged Changes
 
-Ran `git add -A` to stage all changes.
-
-Output of `git status --porcelain`:
+Output of `git status --porcelain | grep '^[MADRCT]'`:
 ```
-A  file.txt
+M  file.txt
 ```
-
-> Staging backup saved to `/tmp/commit-tool-staged-backup-PID.patch` (empty; nothing was staged before)
-> To abort: `git read-tree --empty`
 
 # Diff
 
 Output of `git diff --cached`:
 ```diff
 diff --git a/file.txt b/file.txt
-new file mode 100644
-index HASH..HASH
---- /dev/null
+index HASH..HASH 100644
+--- a/file.txt
 +++ b/file.txt
-@@ -0,0 +1 @@
-+initial
+@@ -1 +1,2 @@
+ initial
++detached work
 ```
 
 # Instructions
-
-Changes are already staged. Review and confirm:
 
 1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
 2. Match the style of recent commits shown above
@@ -74,9 +78,8 @@ Proceed? ([y]es / [n]o)
 ```
 
 Wait for user confirmation before committing.
-4. If confirmed: commit using HEREDOC format
-5. If declined: run `git read-tree --empty` to restore previous staging
-6. Report as described in the Final Report section below
+4. If confirmed: commit using HEREDOC format, then push as described in the Push After Commit section
+5. Report as described in the Final Report section below
 
 # Final Report
 
@@ -88,13 +91,15 @@ Report these in order, then stop:
 
        No commit was attempted: {reason}.
        Commit failed: {reason}.
-       Committed successfully.
+       Committed and pushed successfully.
+       Committed successfully, push not attempted: {reason}.
+       Committed successfully, push failed:
+       {reason}
 
-Never include the commit hash. When more than one commit was made, say how many. If you are stopping to ask the user a question, ask it -- these lines are for a completed turn only.
+Never include the commit hash. When more than one commit was made, say how many. When the push published earlier unpushed commits, say so on the outcome line. If you are stopping to ask the user a question, ask it -- these lines are for a completed turn only.
 
 # Safety Checks
 
-Stop and warn if changes include:
+Stop and warn if staged files include:
 - Secrets (`.env`, credentials, API keys, certs)
 - Large binaries that look accidental
-- Files that seem unrelated to the apparent intent

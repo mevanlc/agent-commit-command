@@ -1,4 +1,4 @@
-# Git Commit - Stage All Mode
+# Git Commit - Interactive Mode
 
 ## Global Instructions
 
@@ -10,73 +10,22 @@
 - After committing, confirm it landed with `git status --short` (in `--staged` mode, unstaged changes may legitimately remain)
 - Do not push without the user's clear and affirmative instruction to do so
 
-Stage all outstanding changes, then commit.
+Help the user decide what to stage and commit.
 
 Branch: `main`
 Identity: `Test User <test@example.com>`
 
 # Recent Commits
 ```
-(no commits yet)
-```
-# Staged Changes
-
-Ran `git add -A` to stage all changes.
-
-Output of `git status --porcelain`:
-```
-A  file.txt
+HASH Main commit
+HASH Initial commit
 ```
 
-> Staging backup saved to `/tmp/commit-tool-staged-backup-PID.patch` (empty; nothing was staged before)
-> To abort: `git read-tree --empty`
-
-# Diff
-
-Output of `git diff --cached`:
-```diff
-diff --git a/file.txt b/file.txt
-new file mode 100644
-index HASH..HASH
---- /dev/null
-+++ b/file.txt
-@@ -0,0 +1 @@
-+initial
+# CONFLICTS DETECTED - STOP
 ```
-
-# Instructions
-
-Changes are already staged. Review and confirm:
-
-1. Review the diff and generate a commit message (imperative summary, optional bullets for distinct changes)
-2. Match the style of recent commits shown above
-3. Present a **Commit Review** to the user in this exact format:
-
+file.txt
 ```
-# Commit Review
-
-## Paths
-M  path/to/modified
-A  path/to/added
-D  path/to/deleted
-R  {old/path -> new/path}
-
-## Proposed Commit Message
-
-<summary line>
-
-    [- bullet if needed]
-    [- bullet if needed]
-
-----
-
-Proceed? ([y]es / [n]o)
-```
-
-Wait for user confirmation before committing.
-4. If confirmed: commit using HEREDOC format
-5. If declined: run `git read-tree --empty` to restore previous staging
-6. Report as described in the Final Report section below
+Inform user and help resolve before committing.
 
 # Final Report
 
@@ -92,9 +41,3 @@ Report these in order, then stop:
 
 Never include the commit hash. When more than one commit was made, say how many. If you are stopping to ask the user a question, ask it -- these lines are for a completed turn only.
 
-# Safety Checks
-
-Stop and warn if changes include:
-- Secrets (`.env`, credentials, API keys, certs)
-- Large binaries that look accidental
-- Files that seem unrelated to the apparent intent

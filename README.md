@@ -78,6 +78,17 @@ commit lands. The push happens only after a successful commit, covers the
 current branch only, stops to ask before creating an upstream for a branch that
 has none, and never rewrites history to force a rejected push through.
 
+Every path that can reach a commit ends with a **Final Report** section telling
+the agent how to close out: first every change it made to the repository beyond
+the staging, commit, and push the mode authorizes (including edits made to
+satisfy a pre-commit hook) — unconditionally, even when small and successful —
+then any substantial issues even if the outcome was green, then exactly one
+outcome line. The outcome vocabulary is `No commit was attempted: {reason}.`,
+`Commit failed: {reason}.`, and `Committed successfully.`; the `-push` modes
+swap the last for `Committed and pushed successfully.`, `Committed
+successfully, push not attempted: {reason}.`, or `Committed successfully, push
+failed:`.
+
 For large diffs, the helper may write the diff to a temp file under `/tmp/` to avoid CLI output truncation and will instruct you to delete it after review.
 
 ## Configuration
@@ -98,3 +109,14 @@ Run tests (requires bash + git):
 ```bash
 bash test/run_all.sh
 ```
+
+Each case renders the helper against a generated repo and diffs the result
+against a blessed `expected.txt`. `bash test/regen_expecteds.sh [case...]`
+re-blesses them — **read the diff before committing a regen**, since the golden
+is the contract the agent actually receives and a regen will just as happily
+enshrine a defect as fix one.
+
+`test/lint_goldens.sh` (also run by `run_all.sh`) asserts what case diffs
+structurally cannot: that a defect already blessed into a golden gets caught.
+It checks fence balance, headings not glued to preceding content, sequential
+instruction numbering, no duplicate headings, and no `wc`-padded counts.

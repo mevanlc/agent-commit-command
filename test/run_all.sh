@@ -24,6 +24,13 @@ for case_dir in "${SCRIPT_DIR}"/*/; do
 done
 
 echo ""
+
+# Structural checks over the goldens themselves. Case diffs cannot catch a
+# defect that is already blessed into expected.txt; these can.
+LINT_RC=0
+"${SCRIPT_DIR}/lint_goldens.sh" || LINT_RC=$?
+
+echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed, ${SKIP} skipped"
 
-[[ $FAIL -eq 0 ]]
+[[ $FAIL -eq 0 && $LINT_RC -eq 0 ]]
