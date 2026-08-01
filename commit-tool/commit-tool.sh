@@ -311,11 +311,13 @@ build_final_report_section() {
   fi
 
   FINAL_REPORT_SECTION="$({
-    printf '# Final Report\n\nReport these in order, then stop:\n\n'
-    printf '1. **Repo changes you made.** One line each, saying what and why. Report every change you made to the repository beyond the staging, commit, and push this mode authorizes -- file edits, files created/deleted/renamed, mode changes, `.gitignore` or git config edits, hook or dependency changes. Edits you made to satisfy a pre-commit hook belong here. This is unconditional: report them even when they are small, obvious, and fully successful. Omit this item only when you changed nothing.\n'
-    printf '2. **Substantial issues.** Anything that went wrong or needed a retry, even when the final outcome is green: a hook that rejected the commit, a failing formatter or linter, a push that needed a second attempt, warnings a careful reviewer would want to see. Skip routine, expected output.\n'
-    printf '3. **One outcome line**, last, exactly one of:\n\n'
+    printf '# Final Report\n\nThe report is one outcome line, preceded by a short preamble only when there is something to say. Preamble first, outcome line last.\n\n'
+    printf '**The outcome line is required.** It is exactly one of:\n\n'
     printf '%s\n\n' "$outcome_lines"
+    printf '**The preamble is conditional.** Include either of these only when it applies:\n\n'
+    printf -- '- **Repo changes you made.** One line each, saying what and why: file edits, files created/deleted/renamed, mode changes, `.gitignore` or git config edits, hook or dependency changes -- anything beyond the staging, commit, and push this mode already authorizes. Edits you made to satisfy a pre-commit hook belong here. When you did change something, reporting it is unconditional: report it even when it was small, obvious, and fully successful.\n'
+    printf -- '- **Substantial issues.** Anything that went wrong or needed a retry, even when the final outcome is green: a hook that rejected the commit, a failing formatter or linter, a push that needed a second attempt, warnings a careful reviewer would want to see. Skip routine, expected output.\n\n'
+    printf 'When neither applies, the outcome line is the entire report. Do not write `none`, `no changes`, or any other placeholder for an item that does not apply, and do not mention the staging, commit, or push itself -- those are the happy path this mode already asked for, and reporting them spends user attention on what was expected all along.\n\n'
     printf 'Never include the commit hash. When more than one commit was made, say how many.%s If you are stopping to ask the user a question, ask it -- these lines are for a completed turn only.\n\n' "$push_note"
     printf '__END__'
   })"
