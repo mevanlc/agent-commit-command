@@ -1,4 +1,4 @@
-# agent-commit-command
+# agent-commit-skill
 
 Git commit helper for AI coding CLIs (Codex CLI + Claude Code).
 
@@ -10,8 +10,8 @@ This repo provides:
 ## Install
 
 The installers:
-- Symlink `~/.local/share/agent-commit-command` to this repo (or fail if that path exists as a non-symlink directory)
-- Seed defaults into `~/.config/agent-commit-command/` (never overwrites existing config)
+- Symlink `~/.local/share/agent-commit-skill` to this repo (or fail if that path exists as a non-symlink directory)
+- Seed defaults into `~/.config/agent-commit-skill/` (never overwrites existing config)
 - Symlink command artifacts into:
   - Codex CLI: `~/.codex/skills/`
   - Claude Code: `~/.claude/commands/`
@@ -93,11 +93,11 @@ For large diffs, the helper may write the diff to a temp file under `/tmp/` to a
 
 ## Configuration
 
-Config location (default): `~/.config/agent-commit-command/`
+Config location (default): `~/.config/agent-commit-skill/`
 
 - `commit-tool.config`
   - `report_recent_commits=5` (set `0` to disable)
-- Hooks (installed with `--hooks` / `-Hooks`): `~/.config/agent-commit-command/hooks/`
+- Hooks (installed with `--hooks` / `-Hooks`): `~/.config/agent-commit-skill/hooks/`
   - `hook-preflight-01-id-check.sh` and `hook-preflight-01-id-check.config`
 
 Override the config directory by setting `AGENT_COMMIT_CONFIG_DIR`.

@@ -20,7 +20,7 @@ mkdir -p "$HOME"
   done
 
   echo "=== .config ==="
-  cd "${HOME}/.config/agent-commit-command"
+  cd "${HOME}/.config/agent-commit-skill"
   # Show files and symlinks separately
   find . -type f -print | LC_ALL=C sort
   find . -type l -print | LC_ALL=C sort | while read -r link; do

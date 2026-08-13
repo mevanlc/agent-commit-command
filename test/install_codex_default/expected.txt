@@ -2,6 +2,6 @@
 ./skills/commit -> codex/skills/commit
 ./skills/gdf-commit -> codex/skills/gdf-commit
 === .local/share ===
-agent-commit-command -> (repo root)
+agent-commit-skill -> (repo root)
 === .config ===
 ./commit-tool.config

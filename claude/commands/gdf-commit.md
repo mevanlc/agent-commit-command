@@ -19,4 +19,4 @@ If `gdf`:
 
 ---
 
-!`~/.local/share/agent-commit-command/commit-tool/commit-tool.sh gdf "$ARGUMENTS"`
+!`~/.local/share/agent-commit-skill/commit-tool/commit-tool.sh gdf "$ARGUMENTS"`

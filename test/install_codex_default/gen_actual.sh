@@ -21,17 +21,17 @@ mkdir -p "$HOME"
   done
 
   echo "=== .local/share ==="
-  if [[ -L "${HOME}/.local/share/agent-commit-command" ]]; then
-    target="$(readlink "${HOME}/.local/share/agent-commit-command")"
+  if [[ -L "${HOME}/.local/share/agent-commit-skill" ]]; then
+    target="$(readlink "${HOME}/.local/share/agent-commit-skill")"
     rel="${target#"${PROJECT_DIR}"}"
     if [[ -n "$rel" ]]; then
-      echo "agent-commit-command -> ${rel}"
+      echo "agent-commit-skill -> ${rel}"
     else
-      echo "agent-commit-command -> (repo root)"
+      echo "agent-commit-skill -> (repo root)"
     fi
   fi
 
   echo "=== .config ==="
-  cd "${HOME}/.config/agent-commit-command"
+  cd "${HOME}/.config/agent-commit-skill"
   find . -type f -print | LC_ALL=C sort
 } > "$TARGET"

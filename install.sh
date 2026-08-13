@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# install.sh - Install agent-commit-command
+# install.sh - Install agent-commit-skill
 #
-# Installs shared code to ~/.local/share/agent-commit-command/ (or creates
+# Installs shared code to ~/.local/share/agent-commit-skill/ (or creates
 # a symlink there pointing to this repo), seeds default configs to
-# ~/.config/agent-commit-command/, and symlinks Codex skills / Claude commands
+# ~/.config/agent-commit-skill/, and symlinks Codex skills / Claude commands
 # into the appropriate CLI directories.
 #
 # Usage:
@@ -21,8 +21,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-CODE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/agent-commit-command"
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/agent-commit-command"
+CODE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/agent-commit-skill"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/agent-commit-skill"
 
 INSTALL_CODEX=0
 INSTALL_CLAUDE=0
@@ -43,8 +43,8 @@ Options:
   --check    Dry-run: show what would happen without making changes
 
 Paths:
-  Code:   ~/.local/share/agent-commit-command/  (symlink to repo)
-  Config: ~/.config/agent-commit-command/        (seeded defaults)
+  Code:   ~/.local/share/agent-commit-skill/  (symlink to repo)
+  Config: ~/.config/agent-commit-skill/        (seeded defaults)
 
 Examples:
   ./install.sh --codex --claude --hooks
@@ -143,7 +143,7 @@ seed_config() {
   log_action "SEED" "$dest" "default config"
 }
 
-# === CODE_DIR: ensure ~/.local/share/agent-commit-command points to this repo ===
+# === CODE_DIR: ensure ~/.local/share/agent-commit-skill points to this repo ===
 
 SCRIPT_REAL="$(cd "$SCRIPT_DIR" && pwd -P)"
 CODE_REAL=""

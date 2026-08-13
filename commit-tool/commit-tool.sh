@@ -332,7 +332,7 @@ emit_final_report_section() {
 # === LOAD CONFIG ===
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_DIR="${AGENT_COMMIT_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/agent-commit-command}"
+CONFIG_DIR="${AGENT_COMMIT_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/agent-commit-skill}"
 CONFIG_FILE="${CONFIG_DIR}/commit-tool.config"
 
 # Defaults

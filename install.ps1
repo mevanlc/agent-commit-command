@@ -1,9 +1,9 @@
 #!/usr/bin/env pwsh
-# install.ps1 - Install agent-commit-command
+# install.ps1 - Install agent-commit-skill
 #
-# Installs shared code to ~/.local/share/agent-commit-command/ (or creates
+# Installs shared code to ~/.local/share/agent-commit-skill/ (or creates
 # a symlink there pointing to this repo), seeds default configs to
-# ~/.config/agent-commit-command/, and symlinks slash-command .md files
+# ~/.config/agent-commit-skill/, and symlinks slash-command .md files
 # into the appropriate CLI directories.
 #
 # Usage:
@@ -39,8 +39,8 @@ function Write-Usage {
   Write-Host '  -Check    Dry-run: show what would happen without making changes'
   Write-Host ''
   Write-Host 'Paths:'
-  Write-Host '  Code:   ~/.local/share/agent-commit-command/  (symlink to repo)'
-  Write-Host '  Config: ~/.config/agent-commit-command/        (seeded defaults)'
+  Write-Host '  Code:   ~/.local/share/agent-commit-skill/  (symlink to repo)'
+  Write-Host '  Config: ~/.config/agent-commit-skill/        (seeded defaults)'
   Write-Host ''
   Write-Host 'Examples:'
   Write-Host '  ./install.ps1 -Codex -Claude -Hooks'
@@ -83,8 +83,8 @@ $XdgConfigHome =
   if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME }
   else { Join-Path $HomeDir '.config' }
 
-$CodeDir = Join-Path $XdgDataHome 'agent-commit-command'
-$ConfigDir = Join-Path $XdgConfigHome 'agent-commit-command'
+$CodeDir = Join-Path $XdgDataHome 'agent-commit-skill'
+$ConfigDir = Join-Path $XdgConfigHome 'agent-commit-skill'
 
 # === VALIDATION ===
 
@@ -179,7 +179,7 @@ function Seed-Config {
   Add-Action -Action 'SEED' -Target $Destination -Detail 'default config'
 }
 
-# === CODE_DIR: ensure ~/.local/share/agent-commit-command points to this repo ===
+# === CODE_DIR: ensure ~/.local/share/agent-commit-skill points to this repo ===
 
 $ScriptReal = (Resolve-Path -LiteralPath $ScriptDir).Path
 $CodeReal = $null

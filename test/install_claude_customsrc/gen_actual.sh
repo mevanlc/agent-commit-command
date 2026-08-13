@@ -20,6 +20,6 @@ mkdir -p "$HOME"
   done
 
   echo "=== .config ==="
-  cd "${HOME}/.config/agent-commit-command"
+  cd "${HOME}/.config/agent-commit-skill"
   find . -type f -print | LC_ALL=C sort
 } > "$TARGET"

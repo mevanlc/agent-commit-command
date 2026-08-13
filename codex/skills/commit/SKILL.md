@@ -9,7 +9,7 @@ calling it, just call it. Report after-the-fact failures, if any.
 
 # Commit
 
-Use this skill to invoke `~/.local/share/agent-commit-command/commit-tool/commit-tool.sh` with the `git` base command. Parse the user's latest request to extract one required mode flag, plus any extra commit instructions; skills do not receive a separate `$ARGUMENTS` placeholder.
+Use this skill to invoke `~/.local/share/agent-commit-skill/commit-tool/commit-tool.sh` with the `git` base command. Parse the user's latest request to extract one required mode flag, plus any extra commit instructions; skills do not receive a separate `$ARGUMENTS` placeholder.
 
 ## Required Mode
 
@@ -32,7 +32,7 @@ If no mode is present in the user's request, ask the user to provide one.
 Run:
 
 ```sh
-~/.local/share/agent-commit-command/commit-tool/commit-tool.sh git "<derived args>"
+~/.local/share/agent-commit-skill/commit-tool/commit-tool.sh git "<derived args>"
 ```
 
 Build `<derived args>` from the actual user request. Include the chosen mode first, then any additional freeform instructions.

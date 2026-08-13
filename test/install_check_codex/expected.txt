@@ -1,9 +1,9 @@
 === Dry Run ===
 
-  CREATE  /HOME/.local/share/agent-commit-command  (symlink -> /REPO)
-  SEED  /HOME/.config/agent-commit-command/commit-tool.config  (from /REPO/defaults/commit-tool.config)
-  CREATE  /HOME/.config/agent-commit-command/hooks/hook-preflight-01-id-check.sh  (symlink -> /REPO/commit-tool/hooks-available/hook-preflight-01-id-check.sh)
-  SEED  /HOME/.config/agent-commit-command/hooks/hook-preflight-01-id-check.config  (from /REPO/defaults/hooks/hook-preflight-01-id-check.config)
+  CREATE  /HOME/.local/share/agent-commit-skill  (symlink -> /REPO)
+  SEED  /HOME/.config/agent-commit-skill/commit-tool.config  (from /REPO/defaults/commit-tool.config)
+  CREATE  /HOME/.config/agent-commit-skill/hooks/hook-preflight-01-id-check.sh  (symlink -> /REPO/commit-tool/hooks-available/hook-preflight-01-id-check.sh)
+  SEED  /HOME/.config/agent-commit-skill/hooks/hook-preflight-01-id-check.config  (from /REPO/defaults/hooks/hook-preflight-01-id-check.config)
   CREATE  /HOME/.codex/skills/commit  (symlink -> /REPO/codex/skills/commit)
   CREATE  /HOME/.codex/skills/gdf-commit  (symlink -> /REPO/codex/skills/gdf-commit)
 
