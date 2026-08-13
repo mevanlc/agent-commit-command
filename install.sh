@@ -7,16 +7,18 @@
 # into the appropriate CLI directories.
 #
 # Usage:
-#   ./install.sh [--codex] [--claude] [--copilot] [--hooks] [--check]
+#   ./install.sh [--codex] [--claude] [--copilot] [--agy] [--dotagents] [--hooks] [--check]
 #
-# At least one of --codex, --claude, or --copilot is required (multiple may be given).
+# At least one of --codex, --claude, --copilot, --agy, or --dotagents is required (multiple may be given).
 #
 # Options:
-#   --codex    Symlink Codex skill directories into ~/.codex/skills/
-#   --claude   Symlink Claude slash-command .md files into ~/.claude/commands/
-#   --copilot  Symlink Copilot skill directories into ~/.copilot/skills/
-#   --hooks    Also set up hooks in the config directory
-#   --check    Dry-run: show what would be installed without making changes
+#   --codex      Symlink Codex skill directories into ~/.codex/skills/
+#   --claude     Symlink Claude slash-command .md files into ~/.claude/commands/
+#   --copilot    Symlink Copilot skill directories into ~/.copilot/skills/
+#   --agy        Symlink Antigravity skill directories into ~/.gemini/antigravity-cli/skills/
+#   --dotagents  Symlink Agent skill directories into ~/.agents/skills/
+#   --hooks      Also set up hooks in the config directory
+#   --check      Dry-run: show what would be installed without making changes
 
 set -euo pipefail
 
@@ -28,6 +30,8 @@ CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/agent-commit-skill"
 INSTALL_CODEX=0
 INSTALL_CLAUDE=0
 INSTALL_COPILOT=0
+INSTALL_AGY=0
+INSTALL_DOTAGENTS=0
 INSTALL_HOOKS=0
 CHECK_ONLY=0
 
@@ -37,22 +41,26 @@ Usage:
   ./install.sh --codex [--hooks] [--check]
   ./install.sh --claude [--hooks] [--check]
   ./install.sh --copilot [--hooks] [--check]
-  ./install.sh --codex --claude --copilot [--hooks] [--check]
+  ./install.sh --agy [--hooks] [--check]
+  ./install.sh --dotagents [--hooks] [--check]
+  ./install.sh --codex --claude --copilot --agy --dotagents [--hooks] [--check]
 
 Options:
-  --codex    Symlink Codex skill directories into ~/.codex/skills/
-  --claude   Symlink Claude slash-command .md files into ~/.claude/commands/
-  --copilot  Symlink Copilot skill directories into ~/.copilot/skills/
-  --hooks    Also set up preflight hooks in the config directory
-  --check    Dry-run: show what would happen without making changes
+  --codex      Symlink Codex skill directories into ~/.codex/skills/
+  --claude     Symlink Claude slash-command .md files into ~/.claude/commands/
+  --copilot    Symlink Copilot skill directories into ~/.copilot/skills/
+  --agy        Symlink Antigravity skill directories into ~/.gemini/antigravity-cli/skills/
+  --dotagents  Symlink Agent skill directories into ~/.agents/skills/
+  --hooks      Also set up preflight hooks in the config directory
+  --check      Dry-run: show what would happen without making changes
 
 Paths:
   Code:   ~/.local/share/agent-commit-skill/  (symlink to repo)
   Config: ~/.config/agent-commit-skill/        (seeded defaults)
 
 Examples:
-  ./install.sh --codex --claude --copilot --hooks
-  ./install.sh --copilot --check
+  ./install.sh --codex --claude --copilot --agy --dotagents --hooks
+  ./install.sh --dotagents --check
 EOF
 }
 
@@ -61,6 +69,8 @@ while [[ $# -gt 0 ]]; do
     --codex) INSTALL_CODEX=1; shift ;;
     --claude) INSTALL_CLAUDE=1; shift ;;
     --copilot) INSTALL_COPILOT=1; shift ;;
+    --agy) INSTALL_AGY=1; shift ;;
+    --dotagents) INSTALL_DOTAGENTS=1; shift ;;
     --hooks) INSTALL_HOOKS=1; shift ;;
     --check) CHECK_ONLY=1; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -72,8 +82,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$INSTALL_CODEX" == "0" && "$INSTALL_CLAUDE" == "0" && "$INSTALL_COPILOT" == "0" ]]; then
-  echo "Error: at least one of --codex, --claude, or --copilot is required" >&2
+if [[ "$INSTALL_CODEX" == "0" && "$INSTALL_CLAUDE" == "0" && "$INSTALL_COPILOT" == "0" && "$INSTALL_AGY" == "0" && "$INSTALL_DOTAGENTS" == "0" ]]; then
+  echo "Error: at least one of --codex, --claude, --copilot, --agy, or --dotagents is required" >&2
   usage >&2
   exit 1
 fi
@@ -235,6 +245,34 @@ if [[ "$INSTALL_COPILOT" == "1" ]]; then
   for skill_dir in "${SCRIPT_DIR}/codex/skills"/*; do
     [[ -d "$skill_dir" ]] || continue
     ensure_symlink "${COPILOT_DIR}/$(basename "$skill_dir")" "$skill_dir"
+  done
+fi
+
+# === ANTIGRAVITY (AGY) SKILL SYMLINKS ===
+
+if [[ "$INSTALL_AGY" == "1" ]]; then
+  AGY_DIR="${HOME}/.gemini/antigravity-cli/skills"
+  if [[ "$CHECK_ONLY" == "0" ]]; then
+    mkdir -p "$AGY_DIR"
+  fi
+
+  for skill_dir in "${SCRIPT_DIR}/codex/skills"/*; do
+    [[ -d "$skill_dir" ]] || continue
+    ensure_symlink "${AGY_DIR}/$(basename "$skill_dir")" "$skill_dir"
+  done
+fi
+
+# === DOTAGENTS SKILL SYMLINKS ===
+
+if [[ "$INSTALL_DOTAGENTS" == "1" ]]; then
+  DOTAGENTS_DIR="${HOME}/.agents/skills"
+  if [[ "$CHECK_ONLY" == "0" ]]; then
+    mkdir -p "$DOTAGENTS_DIR"
+  fi
+
+  for skill_dir in "${SCRIPT_DIR}/codex/skills"/*; do
+    [[ -d "$skill_dir" ]] || continue
+    ensure_symlink "${DOTAGENTS_DIR}/$(basename "$skill_dir")" "$skill_dir"
   done
 fi
 

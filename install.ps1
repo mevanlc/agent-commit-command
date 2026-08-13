@@ -7,15 +7,17 @@
 # into the appropriate CLI directories.
 #
 # Usage:
-#   ./install.ps1 [-Codex] [-Claude] [-Copilot] [-Hooks] [-Check]
+#   ./install.ps1 [-Codex] [-Claude] [-Copilot] [-Agy] [-DotAgents] [-Hooks] [-Check]
 #
-# At least one of -Codex, -Claude, or -Copilot is required (multiple may be given).
+# At least one of -Codex, -Claude, -Copilot, -Agy, or -DotAgents is required (multiple may be given).
 
 [CmdletBinding(PositionalBinding = $false)]
 param(
   [switch]$Codex,
   [switch]$Claude,
   [switch]$Copilot,
+  [switch]$Agy,
+  [switch]$DotAgents,
   [switch]$Hooks,
   [switch]$Check,
   [Alias('h')]
@@ -32,22 +34,26 @@ function Write-Usage {
   Write-Host '  ./install.ps1 -Codex [-Hooks] [-Check]'
   Write-Host '  ./install.ps1 -Claude [-Hooks] [-Check]'
   Write-Host '  ./install.ps1 -Copilot [-Hooks] [-Check]'
-  Write-Host '  ./install.ps1 -Codex -Claude -Copilot [-Hooks] [-Check]'
+  Write-Host '  ./install.ps1 -Agy [-Hooks] [-Check]'
+  Write-Host '  ./install.ps1 -DotAgents [-Hooks] [-Check]'
+  Write-Host '  ./install.ps1 -Codex -Claude -Copilot -Agy -DotAgents [-Hooks] [-Check]'
   Write-Host ''
   Write-Host 'Options:'
-  Write-Host '  -Codex    Symlink Codex skill directories into ~/.codex/skills/'
-  Write-Host '  -Claude   Symlink Claude slash-command .md files into ~/.claude/commands/'
-  Write-Host '  -Copilot  Symlink Copilot skill directories into ~/.copilot/skills/'
-  Write-Host '  -Hooks    Also set up preflight hooks in the config directory'
-  Write-Host '  -Check    Dry-run: show what would happen without making changes'
+  Write-Host '  -Codex      Symlink Codex skill directories into ~/.codex/skills/'
+  Write-Host '  -Claude     Symlink Claude slash-command .md files into ~/.claude/commands/'
+  Write-Host '  -Copilot    Symlink Copilot skill directories into ~/.copilot/skills/'
+  Write-Host '  -Agy        Symlink Antigravity skill directories into ~/.gemini/antigravity-cli/skills/'
+  Write-Host '  -DotAgents  Symlink Agent skill directories into ~/.agents/skills/'
+  Write-Host '  -Hooks      Also set up preflight hooks in the config directory'
+  Write-Host '  -Check      Dry-run: show what would happen without making changes'
   Write-Host ''
   Write-Host 'Paths:'
   Write-Host '  Code:   ~/.local/share/agent-commit-skill/  (symlink to repo)'
   Write-Host '  Config: ~/.config/agent-commit-skill/        (seeded defaults)'
   Write-Host ''
   Write-Host 'Examples:'
-  Write-Host '  ./install.ps1 -Codex -Claude -Copilot -Hooks'
-  Write-Host '  ./install.ps1 -Copilot -Check'
+  Write-Host '  ./install.ps1 -Codex -Claude -Copilot -Agy -DotAgents -Hooks'
+  Write-Host '  ./install.ps1 -DotAgents -Check'
 }
 
 if ($Help) {
@@ -62,8 +68,8 @@ if ($RemainingArgs.Count -gt 0) {
   exit 1
 }
 
-if (-not $Codex -and -not $Claude -and -not $Copilot) {
-  Write-Warning 'At least one of -Codex, -Claude, or -Copilot is required'
+if (-not $Codex -and -not $Claude -and -not $Copilot -and -not $Agy -and -not $DotAgents) {
+  Write-Warning 'At least one of -Codex, -Claude, -Copilot, -Agy, or -DotAgents is required'
   Write-Host ''
   Write-Usage
   exit 1
@@ -265,6 +271,32 @@ if ($Copilot) {
 
   Get-ChildItem -LiteralPath (Join-Path $ScriptDir 'codex' 'skills') -Directory -ErrorAction Stop | ForEach-Object {
     Ensure-Symlink -LinkPath (Join-Path $CopilotDir $_.Name) -Target $_.FullName
+  }
+}
+
+# === ANTIGRAVITY (AGY) SKILL SYMLINKS ===
+
+if ($Agy) {
+  $AgyDir = Join-Path $HomeDir '.gemini' 'antigravity-cli' 'skills'
+  if (-not $Check) {
+    New-Item -ItemType Directory -Force -Path $AgyDir | Out-Null
+  }
+
+  Get-ChildItem -LiteralPath (Join-Path $ScriptDir 'codex' 'skills') -Directory -ErrorAction Stop | ForEach-Object {
+    Ensure-Symlink -LinkPath (Join-Path $AgyDir $_.Name) -Target $_.FullName
+  }
+}
+
+# === DOTAGENTS SKILL SYMLINKS ===
+
+if ($DotAgents) {
+  $DotAgentsDir = Join-Path $HomeDir '.agents' 'skills'
+  if (-not $Check) {
+    New-Item -ItemType Directory -Force -Path $DotAgentsDir | Out-Null
+  }
+
+  Get-ChildItem -LiteralPath (Join-Path $ScriptDir 'codex' 'skills') -Directory -ErrorAction Stop | ForEach-Object {
+    Ensure-Symlink -LinkPath (Join-Path $DotAgentsDir $_.Name) -Target $_.FullName
   }
 }
 

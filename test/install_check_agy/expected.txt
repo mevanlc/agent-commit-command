@@ -1,0 +1,8 @@
+=== Dry Run ===
+
+  CREATE  /HOME/.local/share/agent-commit-skill  (symlink -> /REPO)
+  SEED  /HOME/.config/agent-commit-skill/commit-tool.config  (from /REPO/defaults/commit-tool.config)
+  CREATE  /HOME/.gemini/antigravity-cli/skills/commit  (symlink -> /REPO/codex/skills/commit)
+  CREATE  /HOME/.gemini/antigravity-cli/skills/gdf-commit  (symlink -> /REPO/codex/skills/gdf-commit)
+
+Run without --check to apply these changes.

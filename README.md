@@ -1,9 +1,9 @@
 # agent-commit-skill
 
-Git commit helper for AI coding CLIs (Codex CLI, Claude Code, and GitHub Copilot CLI).
+Git commit helper for AI coding CLIs (Codex CLI, Claude Code, GitHub Copilot CLI, and Antigravity).
 
 This repo provides:
-- Codex and Copilot skills (`commit`, `gdf-commit`) and Claude slash commands (`/commit`, `/gdf-commit`)
+- Codex, Copilot, and Antigravity skills (`commit`, `gdf-commit`) and Claude slash commands (`/commit`, `/gdf-commit`)
 - A shared bash helper, `commit-tool/commit-tool.sh`, that prints a structured **Commit Review** workflow and normally requires explicit user confirmation before committing
 - Optional preflight hooks (for example, identity checks)
 
@@ -16,19 +16,21 @@ The installers:
   - Codex CLI: `~/.codex/skills/`
   - Claude Code: `~/.claude/commands/`
   - GitHub Copilot CLI: `~/.copilot/skills/`
+  - Antigravity CLI: `~/.gemini/antigravity-cli/skills/`
+  - Agent Skills (`.agents`): `~/.agents/skills/`
 
 ### macOS/Linux (bash)
 
 ```bash
-./install.sh --codex --claude --copilot --hooks
-./install.sh --codex --check
+./install.sh --codex --claude --copilot --agy --dotagents --hooks
+./install.sh --dotagents --check
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-./install.ps1 -Codex -Claude -Copilot -Hooks
-./install.ps1 -Codex -Check
+./install.ps1 -Codex -Claude -Copilot -Agy -DotAgents -Hooks
+./install.ps1 -DotAgents -Check
 ```
 
 Notes:
