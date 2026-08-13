@@ -7,14 +7,15 @@
 # into the appropriate CLI directories.
 #
 # Usage:
-#   ./install.ps1 [-Codex] [-Claude] [-Hooks] [-Check]
+#   ./install.ps1 [-Codex] [-Claude] [-Copilot] [-Hooks] [-Check]
 #
-# At least one of -Codex or -Claude is required (both may be given).
+# At least one of -Codex, -Claude, or -Copilot is required (multiple may be given).
 
 [CmdletBinding(PositionalBinding = $false)]
 param(
   [switch]$Codex,
   [switch]$Claude,
+  [switch]$Copilot,
   [switch]$Hooks,
   [switch]$Check,
   [Alias('h')]
@@ -30,11 +31,13 @@ function Write-Usage {
   Write-Host 'Usage:'
   Write-Host '  ./install.ps1 -Codex [-Hooks] [-Check]'
   Write-Host '  ./install.ps1 -Claude [-Hooks] [-Check]'
-  Write-Host '  ./install.ps1 -Codex -Claude [-Hooks] [-Check]'
+  Write-Host '  ./install.ps1 -Copilot [-Hooks] [-Check]'
+  Write-Host '  ./install.ps1 -Codex -Claude -Copilot [-Hooks] [-Check]'
   Write-Host ''
   Write-Host 'Options:'
   Write-Host '  -Codex    Symlink Codex skill directories into ~/.codex/skills/'
   Write-Host '  -Claude   Symlink Claude slash-command .md files into ~/.claude/commands/'
+  Write-Host '  -Copilot  Symlink Copilot skill directories into ~/.copilot/skills/'
   Write-Host '  -Hooks    Also set up preflight hooks in the config directory'
   Write-Host '  -Check    Dry-run: show what would happen without making changes'
   Write-Host ''
@@ -43,8 +46,8 @@ function Write-Usage {
   Write-Host '  Config: ~/.config/agent-commit-skill/        (seeded defaults)'
   Write-Host ''
   Write-Host 'Examples:'
-  Write-Host '  ./install.ps1 -Codex -Claude -Hooks'
-  Write-Host '  ./install.ps1 -Claude -Check'
+  Write-Host '  ./install.ps1 -Codex -Claude -Copilot -Hooks'
+  Write-Host '  ./install.ps1 -Copilot -Check'
 }
 
 if ($Help) {
@@ -59,8 +62,8 @@ if ($RemainingArgs.Count -gt 0) {
   exit 1
 }
 
-if (-not $Codex -and -not $Claude) {
-  Write-Warning 'At least one of -Codex or -Claude is required'
+if (-not $Codex -and -not $Claude -and -not $Copilot) {
+  Write-Warning 'At least one of -Codex, -Claude, or -Copilot is required'
   Write-Host ''
   Write-Usage
   exit 1
@@ -249,6 +252,19 @@ if ($Codex) {
 
   Get-ChildItem -LiteralPath (Join-Path $ScriptDir 'codex' 'skills') -Directory -ErrorAction Stop | ForEach-Object {
     Ensure-Symlink -LinkPath (Join-Path $CodexDir $_.Name) -Target $_.FullName
+  }
+}
+
+# === COPILOT SKILL SYMLINKS ===
+
+if ($Copilot) {
+  $CopilotDir = Join-Path $HomeDir '.copilot' 'skills'
+  if (-not $Check) {
+    New-Item -ItemType Directory -Force -Path $CopilotDir | Out-Null
+  }
+
+  Get-ChildItem -LiteralPath (Join-Path $ScriptDir 'codex' 'skills') -Directory -ErrorAction Stop | ForEach-Object {
+    Ensure-Symlink -LinkPath (Join-Path $CopilotDir $_.Name) -Target $_.FullName
   }
 }
 

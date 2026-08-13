@@ -1,9 +1,9 @@
 # agent-commit-skill
 
-Git commit helper for AI coding CLIs (Codex CLI + Claude Code).
+Git commit helper for AI coding CLIs (Codex CLI, Claude Code, and GitHub Copilot CLI).
 
 This repo provides:
-- Codex skills (`$commit`, `$gdf-commit`) and Claude slash commands (`/commit`, `/gdf-commit`)
+- Codex and Copilot skills (`commit`, `gdf-commit`) and Claude slash commands (`/commit`, `/gdf-commit`)
 - A shared bash helper, `commit-tool/commit-tool.sh`, that prints a structured **Commit Review** workflow and normally requires explicit user confirmation before committing
 - Optional preflight hooks (for example, identity checks)
 
@@ -15,18 +15,19 @@ The installers:
 - Symlink command artifacts into:
   - Codex CLI: `~/.codex/skills/`
   - Claude Code: `~/.claude/commands/`
+  - GitHub Copilot CLI: `~/.copilot/skills/`
 
 ### macOS/Linux (bash)
 
 ```bash
-./install.sh --codex --claude --hooks
+./install.sh --codex --claude --copilot --hooks
 ./install.sh --codex --check
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-./install.ps1 -Codex -Claude -Hooks
+./install.ps1 -Codex -Claude -Copilot -Hooks
 ./install.ps1 -Codex -Check
 ```
 
@@ -55,6 +56,17 @@ $gdf-commit --staged|--staged-yes|--all|--all-yes|--ask [additional instructions
 ```
 
 Claude:
+
+```text
+/commit --staged [additional instructions...]
+/commit --staged-yes [additional instructions...]
+/commit --all [additional instructions...]
+/commit --all-yes [additional instructions...]
+/commit --ask [additional instructions...]
+/gdf-commit --staged|--staged-yes|--all|--all-yes|--ask [additional instructions...]
+```
+
+GitHub Copilot CLI:
 
 ```text
 /commit --staged [additional instructions...]

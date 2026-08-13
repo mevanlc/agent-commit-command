@@ -7,13 +7,14 @@
 # into the appropriate CLI directories.
 #
 # Usage:
-#   ./install.sh [--codex] [--claude] [--hooks] [--check]
+#   ./install.sh [--codex] [--claude] [--copilot] [--hooks] [--check]
 #
-# At least one of --codex or --claude is required (both may be given).
+# At least one of --codex, --claude, or --copilot is required (multiple may be given).
 #
 # Options:
 #   --codex    Symlink Codex skill directories into ~/.codex/skills/
 #   --claude   Symlink Claude slash-command .md files into ~/.claude/commands/
+#   --copilot  Symlink Copilot skill directories into ~/.copilot/skills/
 #   --hooks    Also set up hooks in the config directory
 #   --check    Dry-run: show what would be installed without making changes
 
@@ -26,6 +27,7 @@ CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/agent-commit-skill"
 
 INSTALL_CODEX=0
 INSTALL_CLAUDE=0
+INSTALL_COPILOT=0
 INSTALL_HOOKS=0
 CHECK_ONLY=0
 
@@ -34,11 +36,13 @@ usage() {
 Usage:
   ./install.sh --codex [--hooks] [--check]
   ./install.sh --claude [--hooks] [--check]
-  ./install.sh --codex --claude [--hooks] [--check]
+  ./install.sh --copilot [--hooks] [--check]
+  ./install.sh --codex --claude --copilot [--hooks] [--check]
 
 Options:
   --codex    Symlink Codex skill directories into ~/.codex/skills/
   --claude   Symlink Claude slash-command .md files into ~/.claude/commands/
+  --copilot  Symlink Copilot skill directories into ~/.copilot/skills/
   --hooks    Also set up preflight hooks in the config directory
   --check    Dry-run: show what would happen without making changes
 
@@ -47,8 +51,8 @@ Paths:
   Config: ~/.config/agent-commit-skill/        (seeded defaults)
 
 Examples:
-  ./install.sh --codex --claude --hooks
-  ./install.sh --claude --check
+  ./install.sh --codex --claude --copilot --hooks
+  ./install.sh --copilot --check
 EOF
 }
 
@@ -56,6 +60,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --codex) INSTALL_CODEX=1; shift ;;
     --claude) INSTALL_CLAUDE=1; shift ;;
+    --copilot) INSTALL_COPILOT=1; shift ;;
     --hooks) INSTALL_HOOKS=1; shift ;;
     --check) CHECK_ONLY=1; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -67,8 +72,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$INSTALL_CODEX" == "0" && "$INSTALL_CLAUDE" == "0" ]]; then
-  echo "Error: at least one of --codex or --claude is required" >&2
+if [[ "$INSTALL_CODEX" == "0" && "$INSTALL_CLAUDE" == "0" && "$INSTALL_COPILOT" == "0" ]]; then
+  echo "Error: at least one of --codex, --claude, or --copilot is required" >&2
   usage >&2
   exit 1
 fi
@@ -216,6 +221,20 @@ if [[ "$INSTALL_CODEX" == "1" ]]; then
   for skill_dir in "${SCRIPT_DIR}/codex/skills"/*; do
     [[ -d "$skill_dir" ]] || continue
     ensure_symlink "${CODEX_DIR}/$(basename "$skill_dir")" "$skill_dir"
+  done
+fi
+
+# === COPILOT SKILL SYMLINKS ===
+
+if [[ "$INSTALL_COPILOT" == "1" ]]; then
+  COPILOT_DIR="${HOME}/.copilot/skills"
+  if [[ "$CHECK_ONLY" == "0" ]]; then
+    mkdir -p "$COPILOT_DIR"
+  fi
+
+  for skill_dir in "${SCRIPT_DIR}/codex/skills"/*; do
+    [[ -d "$skill_dir" ]] || continue
+    ensure_symlink "${COPILOT_DIR}/$(basename "$skill_dir")" "$skill_dir"
   done
 fi
 
