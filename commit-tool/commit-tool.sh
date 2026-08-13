@@ -511,7 +511,7 @@ compose_diff_external() {
   local diff_file="$1"
   local char_count="$2"
   printf '# Diff\n\n'
-  printf '**Diff too large for inline display** (%s characters)\n\n' "$char_count"
+  printf '**Diff too large for inline display** (%s bytes)\n\n' "$char_count"
   printf 'The diff has been saved to: `%s`\n\n' "$diff_file"
   cat <<'EOF'
 **Instructions for reviewing the diff:**
