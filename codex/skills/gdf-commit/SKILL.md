@@ -84,4 +84,25 @@ force-push, reset, rebase, or amend to force a rejected push through.
 
 ## Windows
 
-On Windows, assume this workflow runs via Git Bash. If Git Bash is unavailable, stop and inform the user.
+On Windows, run the helper through Git for Windows Bash, even when the current
+shell is PowerShell. Do not invoke a bare `bash`: it may select WSL, where `~`
+resolves to a Linux home directory instead of the Windows profile containing
+the installed helper.
+
+From PowerShell, locate and invoke Git for Windows Bash explicitly:
+
+```powershell
+$gitExe = (Get-Command git -ErrorAction Stop).Source
+$gitRoot = Split-Path (Split-Path $gitExe -Parent) -Parent
+$gitBash = Join-Path $gitRoot 'bin\bash.exe'
+if (-not (Test-Path -LiteralPath $gitBash -PathType Leaf)) {
+    throw "Git for Windows Bash was not found at $gitBash"
+}
+& $gitBash -lc '~/.local/share/agent-commit-skill/commit-tool/commit-tool.sh gdf "<derived args>"'
+```
+
+Replace `<derived args>` before invoking the command, keeping the complete
+derived string inside the shown double quotes so the helper receives it as one
+argument. Use the same explicit `$gitBash` executable for any later Bash
+commands required by the helper. If Git for Windows Bash is unavailable, stop
+and inform the user.
